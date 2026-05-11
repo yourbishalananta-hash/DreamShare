@@ -5,133 +5,57 @@
 class APIService {
   constructor() {
     this.baseURL = CONFIG.api.baseURL;
-    this.cache = new Map();
-    this.pendingRequests = new Map();
+    this.cache = {};
   }
   
-  async request(endpoint, options = {}) {
+  async fetchAPI(endpoint) {
     const url = `${this.baseURL}${endpoint}`;
-    const cacheKey = `${options.method || 'GET'}:${url}:${JSON.stringify(options.body || '')}`;
     
-    // Check cache for GET requests
-    if ((!options.method || options.method === 'GET') && this.cache.has(cacheKey)) {
-      const cached = this.cache.get(cacheKey);
-      if (Date.now() - cached.timestamp < (options.cacheTime || 30000)) {
-        return cached.data;
-      }
+    // Check cache (valid for 30 seconds)
+    const cacheKey = url;
+    if (this.cache[cacheKey] && (Date.now() - this.cache[cacheKey].timestamp < 30000)) {
+      return this.cache[cacheKey].data;
     }
-    
-    // Deduplicate pending requests
-    if (this.pendingRequests.has(cacheKey)) {
-      return this.pendingRequests.get(cacheKey);
-    }
-    
-    const requestPromise = this.executeRequest(url, options);
-    this.pendingRequests.set(cacheKey, requestPromise);
     
     try {
-      const data = await requestPromise;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), CONFIG.api.timeout);
       
-      // Cache successful GET responses
-      if (!options.method || options.method === 'GET') {
-        this.cache.set(cacheKey, { data, timestamp: Date.now() });
-      }
-      
-      return data;
-    } finally {
-      this.pendingRequests.delete(cacheKey);
-    }
-  }
-  
-  async executeRequest(url, options) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), CONFIG.api.timeout);
-    
-    try {
-      const response = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
-      });
-      
+      const response = await fetch(url, { signal: controller.signal });
       clearTimeout(timeout);
       
       if (!response.ok) {
-        throw new APIError(
-          `HTTP ${response.status}: ${response.statusText}`,
-          response.status
-        );
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
-      return await response.json();
+      const data = await response.json();
+      
+      // Cache the response
+      this.cache[cacheKey] = { data, timestamp: Date.now() };
+      
+      return data;
     } catch (error) {
-      clearTimeout(timeout);
-      
-      if (error.name === 'AbortError') {
-        throw new APIError('Request timeout', 408);
-      }
-      
+      console.error('API Error:', error);
       throw error;
     }
   }
   
-  // Market Data Endpoints
   async getMarketWatch() {
-    return this.request('/stocks/market-watch');
+    return this.fetchAPI('/stocks/market-watch');
   }
   
   async getStockDetails(symbol) {
-    return this.request(`/stocks/${symbol}/details`);
+    return this.fetchAPI(`/stocks/${symbol}/details`);
   }
   
-  async getStockHistory(symbol, timeframe = '1D', limit = 100) {
-    return this.request(`/stocks/${symbol}/history?timeframe=${timeframe}&limit=${limit}`);
-  }
-  
-  async getTechnicalIndicators(symbol) {
-    return this.request(`/stocks/${symbol}/technicals`);
-  }
-  
-  // Screener Endpoints
-  async getScreenerResults(filters) {
-    return this.request('/screener/search', {
-      method: 'POST',
-      body: JSON.stringify(filters),
-    });
-  }
-  
-  // Portfolio Endpoints
-  async getPortfolio() {
-    return this.request('/portfolio');
-  }
-  
-  async executeOrder(orderData) {
-    return this.request('/orders/execute', {
-      method: 'POST',
-      body: JSON.stringify(orderData),
-    });
-  }
-  
-  // News Endpoints
-  async getMarketNews(category = 'all') {
-    return this.request(`/news?category=${category}`);
+  async getTechnicals(symbol) {
+    return this.fetchAPI(`/stocks/${symbol}/technicals`);
   }
   
   clearCache() {
-    this.cache.clear();
+    this.cache = {};
   }
 }
 
-class APIError extends Error {
-  constructor(message, status) {
-    super(message);
-    this.name = 'APIError';
-    this.status = status;
-  }
-}
-
-// Create global API service instance
+// Create global instance
 const apiService = new APIService();
