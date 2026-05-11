@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
-  <title>MarketPulse Pro • Advanced Stock Analysis Suite</title>
+  <title>MarketPulse Pro • Ultimate Stock Analysis Suite</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
@@ -112,9 +112,10 @@
       background: white;
       border-radius: 1.5rem;
       box-shadow: 0 15px 30px rgba(0,0,0,0.15);
-      width: 280px;
+      width: 300px;
+      max-height: 250px;
+      overflow-y: auto;
       z-index: 999;
-      overflow: hidden;
       display: none;
     }
     .suggestions-dropdown.active {
@@ -126,9 +127,15 @@
       font-weight: 500;
       border-bottom: 1px solid #f0f0f0;
       transition: background 0.15s;
+      display: flex;
+      justify-content: space-between;
     }
     .suggestion-item:hover {
       background: #f4f7fd;
+    }
+    .suggestion-item .sym-name {
+      color: #6b7a99;
+      font-size: 0.8rem;
     }
 
     .tab-bar {
@@ -208,6 +215,14 @@
       padding: 0.5rem 0;
       border-bottom: 1px solid rgba(0,0,0,0.04);
       font-size: 0.9rem;
+      align-items: center;
+    }
+    .list-row.header-row {
+      font-weight: 700;
+      background: #f8fafd;
+      padding: 0.5rem;
+      border-radius: 0.5rem;
+      margin-bottom: 0.3rem;
     }
 
     .news-item {
@@ -235,6 +250,23 @@
       font-weight: 700;
     }
 
+    .see-more-btn {
+      background: transparent;
+      border: 1px solid #dce3ef;
+      padding: 0.4rem 1rem;
+      border-radius: 1.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #2d6a9f;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      transition: 0.2s;
+    }
+    .see-more-btn:hover {
+      background: #f0f4fc;
+      border-color: #2d6a9f;
+    }
+
     canvas {
       width: 100%;
       height: auto;
@@ -260,6 +292,40 @@
       border-radius: 0.6rem;
       font-size: 0.7rem;
       font-weight: 600;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      display: none;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+    .modal-content {
+      background: white;
+      border-radius: 2rem;
+      padding: 2rem;
+      width: 90%;
+      max-width: 700px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 30px 60px rgba(0,0,0,0.3);
+    }
+    .modal-close {
+      float: right;
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #6b7a99;
     }
   </style>
 </head>
@@ -290,6 +356,12 @@
   </div>
 
   <div id="tabContent" class="glass" style="min-height: 520px;"></div>
+  
+  <!-- Modal for expanded lists -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-content" id="modalContent"></div>
+  </div>
+
   <div style="text-align: center; font-size: 0.7rem; color: #6b7a99; padding: 0.3rem;">
     ⚡ Real-time simulated data · Advanced analytics · Not financial advice
   </div>
@@ -308,15 +380,20 @@
       NVDA: { name: "NVIDIA", base: 902.5, sector: "Technology", pe: 72.4, marketCap: "2.23T", dividend: 0.04, eps: 12.46, bookValue: 35.8, debtEquity: 0.52 },
       JPM: { name: "JPMorgan Chase", base: 198.4, sector: "Financial", pe: 12.1, marketCap: "570B", dividend: 4.2, eps: 16.4, bookValue: 82.3, debtEquity: 2.4 },
       BAC: { name: "Bank of America", base: 39.2, sector: "Financial", pe: 10.8, marketCap: "305B", dividend: 2.8, eps: 3.63, bookValue: 32.1, debtEquity: 2.1 },
-      DIS: { name: "Walt Disney", base: 95.4, sector: "Communication", pe: 32.5, marketCap: "174B", dividend: 0.9, eps: 2.93, bookValue: 28.5, debtEquity: 0.72 }
+      DIS: { name: "Walt Disney", base: 95.4, sector: "Communication", pe: 32.5, marketCap: "174B", dividend: 0.9, eps: 2.93, bookValue: 28.5, debtEquity: 0.72 },
+      WMT: { name: "Walmart", base: 165.2, sector: "Consumer Defensive", pe: 28.1, marketCap: "445B", dividend: 1.5, eps: 5.88, bookValue: 22.1, debtEquity: 0.85 },
+      JNJ: { name: "Johnson & Johnson", base: 156.8, sector: "Healthcare", pe: 16.2, marketCap: "378B", dividend: 3.1, eps: 9.68, bookValue: 28.9, debtEquity: 0.72 },
+      PG: { name: "Procter & Gamble", base: 162.4, sector: "Consumer Defensive", pe: 26.5, marketCap: "382B", dividend: 2.6, eps: 6.13, bookValue: 17.8, debtEquity: 0.68 },
+      V: { name: "Visa Inc.", base: 278.3, sector: "Financial", pe: 32.8, marketCap: "570B", dividend: 0.8, eps: 8.48, bookValue: 19.2, debtEquity: 0.55 },
+      MA: { name: "Mastercard", base: 452.6, sector: "Financial", pe: 38.4, marketCap: "420B", dividend: 0.6, eps: 11.79, bookValue: 14.5, debtEquity: 0.92 }
     };
 
-    // Market indices
     const marketIndices = {
       "S&P 500": { value: 5120.45, change: 0.62 },
       "NASDAQ": { value: 18250.30, change: 1.15 },
       "DJIA": { value: 38940.12, change: -0.24 },
-      "VIX": { value: 15.80, change: -3.42 }
+      "VIX": { value: 15.80, change: -3.42 },
+      "Russell 2000": { value: 2085.67, change: 0.85 }
     };
 
     let currentSymbol = "AAPL";
@@ -362,12 +439,10 @@
         if (losses !== 0) rsi = 100 - (100/(1+(gains/losses)));
       }
       
-      // MACD
       const ema12 = close.slice(-12).reduce((a,b)=>a+b,0)/12;
       const ema26 = close.slice(-26).reduce((a,b)=>a+b,0)/26;
       const macd = ema12 - ema26;
       
-      // Bollinger Bands
       const std20 = Math.sqrt(close.slice(-20).map(p => Math.pow(p-sma20,2)).reduce((a,b)=>a+b,0)/20);
       const upperBB = sma20 + 2*std20;
       const lowerBB = sma20 - 2*std20;
@@ -377,6 +452,56 @@
         rsi: +rsi.toFixed(1), macd: +macd.toFixed(2), 
         upperBB: +upperBB.toFixed(2), lowerBB: +lowerBB.toFixed(2)
       };
+    }
+
+    function getAllMarketData() {
+      const allData = Object.keys(stockList).map(s => {
+        const info = getStockInfo(s);
+        const price = (info.base * (0.95 + Math.random()*0.1)).toFixed(2);
+        const change = parseFloat((Math.random()*12 - 5.5).toFixed(2));
+        const volume = (Math.random()*8+1).toFixed(2) + 'M';
+        const turnover = (Math.random()*1200+150).toFixed(1) + 'M';
+        const transactions = Math.floor(Math.random()*18000+2500);
+        return { symbol: s, name: info.name, price, change, volume, turnover, transactions };
+      });
+      return allData;
+    }
+
+    function showModal(title, data, columns) {
+      const overlay = document.getElementById('modalOverlay');
+      const content = document.getElementById('modalContent');
+      
+      let html = `
+        <button class="modal-close" onclick="document.getElementById('modalOverlay').classList.remove('active')">
+          <i class="fas fa-times"></i>
+        </button>
+        <h2 style="margin-bottom:1rem;">${title}</h2>
+        <div class="list-row header-row">
+          ${columns.map(c => `<span>${c}</span>`).join('')}
+        </div>
+      `;
+      
+      data.forEach(item => {
+        html += `<div class="list-row">`;
+        columns.forEach(col => {
+          const key = col.toLowerCase().replace(/[^a-z]/g, '');
+          if (col === 'Symbol') html += `<span><strong>${item.symbol}</strong></span>`;
+          else if (col === 'Name') html += `<span style="color:#6b7a99;">${item.name}</span>`;
+          else if (col === 'Price') html += `<span>$${item.price}</span>`;
+          else if (col === 'Change' || col === 'Change%') html += `<span class="${item.change>=0?'positive':'negative'}">${item.change>=0?'+':''}${item.change}%</span>`;
+          else if (col === 'Volume') html += `<span>${item.volume}</span>`;
+          else if (col === 'Turnover') html += `<span>${item.turnover}</span>`;
+          else if (col === 'Transactions') html += `<span>${item.transactions.toLocaleString()}</span>`;
+        });
+        html += `</div>`;
+      });
+      
+      content.innerHTML = html;
+      overlay.classList.add('active');
+      
+      overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) overlay.classList.remove('active');
+      });
     }
 
     // ---------- SUGGESTIONS / AUTOCOMPLETE ----------
@@ -390,13 +515,16 @@
           dropdown.classList.remove('active');
           return;
         }
-        const matches = Object.keys(stockList).filter(sym => sym.startsWith(val));
+        const matches = Object.entries(stockList).filter(([sym]) => sym.startsWith(val));
         if (matches.length === 0) {
           dropdown.classList.remove('active');
           return;
         }
-        dropdown.innerHTML = matches.map(sym => 
-          `<div class="suggestion-item" data-symbol="${sym}">${sym} · ${stockList[sym].name}</div>`
+        dropdown.innerHTML = matches.map(([sym, info]) => 
+          `<div class="suggestion-item" data-symbol="${sym}">
+            <span><strong>${sym}</strong></span>
+            <span class="sym-name">${info.name} · $${info.base}</span>
+          </div>`
         ).join('');
         dropdown.classList.add('active');
       });
@@ -421,14 +549,13 @@
 
     // ---------- RENDERERS ----------
     function renderOverview() {
-      const gainers = Object.keys(stockList).map(s => {
-        const info = getStockInfo(s);
-        const ch = (Math.random()*7 - 2.8).toFixed(2);
-        return { symbol: s, price: (info.base*(0.97+Math.random()*0.06)).toFixed(2), change: parseFloat(ch) };
-      }).sort((a,b) => b.change - a.change);
-      
-      const losers = [...gainers].sort((a,b) => a.change - b.change).slice(0,5);
-      const topGainers = gainers.slice(0,5);
+      const allData = getAllMarketData();
+      const sortedByChange = [...allData].sort((a,b) => b.change - a.change);
+      const topGainers = sortedByChange.slice(0, 5);
+      const topLosers = sortedByChange.slice(-5).reverse();
+      const topTurnover = [...allData].sort((a,b) => parseFloat(b.turnover) - parseFloat(a.turnover)).slice(0, 5);
+      const topVolume = [...allData].sort((a,b) => parseFloat(b.volume) - parseFloat(a.volume)).slice(0, 5);
+      const topTransactions = [...allData].sort((a,b) => b.transactions - a.transactions).slice(0, 5);
       
       const news = [
         "Fed holds rates steady, signals cautious approach",
@@ -438,10 +565,6 @@
         "Global markets mixed amid geopolitical concerns"
       ];
 
-      const topTurnover = Object.keys(stockList).slice(0,5).map(s => ({
-        symbol: s, turnover: (Math.random()*950+200).toFixed(1)+'M'
-      }));
-      
       return `
         <div class="grid-2col" style="margin-bottom:1.5rem;">
           <div>
@@ -453,28 +576,35 @@
             ${news.map(n => `<div class="news-item"><i class="fas fa-circle" style="font-size:0.35rem; color:#2d6a9f; margin-top:0.4rem;"></i> ${n}</div>`).join('')}
           </div>
         </div>
+        
         <div class="grid-3col">
           <div>
             <div class="card-title"><i class="fas fa-arrow-up positive"></i> Top Gainers</div>
             ${topGainers.map(g => `<div class="list-row"><span><strong>${g.symbol}</strong></span><span>$${g.price}</span><span class="positive">+${g.change}%</span></div>`).join('')}
+            <button class="see-more-btn" onclick="window.showGainersModal()">See All Gainers <i class="fas fa-chevron-right"></i></button>
           </div>
           <div>
             <div class="card-title"><i class="fas fa-arrow-down negative"></i> Top Losers</div>
-            ${losers.map(l => `<div class="list-row"><span><strong>${l.symbol}</strong></span><span>$${l.price}</span><span class="negative">${l.change}%</span></div>`).join('')}
+            ${topLosers.map(l => `<div class="list-row"><span><strong>${l.symbol}</strong></span><span>$${l.price}</span><span class="negative">${l.change}%</span></div>`).join('')}
+            <button class="see-more-btn" onclick="window.showLosersModal()">See All Losers <i class="fas fa-chevron-right"></i></button>
           </div>
           <div>
             <div class="card-title"><i class="fas fa-fire"></i> Top Turnover</div>
             ${topTurnover.map(t => `<div class="list-row"><span><strong>${t.symbol}</strong></span><span>${t.turnover}</span></div>`).join('')}
+            <button class="see-more-btn" onclick="window.showTurnoverModal()">See All Turnover <i class="fas fa-chevron-right"></i></button>
           </div>
         </div>
+        
         <div class="grid-3col" style="margin-top:1.2rem;">
           <div>
             <div class="card-title"><i class="fas fa-chart-bar"></i> Top Volume</div>
-            ${topTurnover.map(t => `<div class="list-row"><span>${t.symbol}</span><span>${(Math.random()*4+1).toFixed(2)}M</span></div>`).join('')}
+            ${topVolume.map(t => `<div class="list-row"><span><strong>${t.symbol}</strong></span><span>${t.volume}</span></div>`).join('')}
+            <button class="see-more-btn" onclick="window.showVolumeModal()">See All Volume <i class="fas fa-chevron-right"></i></button>
           </div>
           <div>
             <div class="card-title"><i class="fas fa-exchange-alt"></i> Top Transactions</div>
-            ${topTurnover.map(t => `<div class="list-row"><span>${t.symbol}</span><span>${Math.floor(Math.random()*12000+2000)} trades</span></div>`).join('')}
+            ${topTransactions.map(t => `<div class="list-row"><span><strong>${t.symbol}</strong></span><span>${t.transactions.toLocaleString()} trades</span></div>`).join('')}
+            <button class="see-more-btn" onclick="window.showTransactionsModal()">See All Transactions <i class="fas fa-chevron-right"></i></button>
           </div>
           <div>
             <div class="card-title"><i class="fas fa-globe"></i> Market Indices</div>
@@ -530,7 +660,7 @@
           <button id="techFilterBtn"><i class="fas fa-filter"></i> Apply</button>
         </div>
         <div class="card-title"><i class="fas fa-chart-simple"></i> Technical Screener (SMA20, SMA50, RSI, MACD, Bollinger)</div>
-        <div class="list-row" style="font-weight:700; background:#f8fafd; padding:0.5rem;">
+        <div class="list-row header-row">
           <span>Symbol</span><span>Price</span><span>RSI</span><span>MACD</span><span>Signal</span>
         </div>
         ${rows}
@@ -583,7 +713,7 @@
           <button id="floorSearchBtn"><i class="fas fa-search"></i> Load</button>
         </div>
         <div class="card-title"><i class="fas fa-receipt"></i> Floorsheet · ${symbol}</div>
-        <div class="floorsheet-row" style="font-weight:700; background:#f8fafd;">
+        <div class="floorsheet-row header-row">
           <span>Time</span><span>Price</span><span>Vol</span><span>Buyer</span><span>Seller</span>
         </div>
         ${trans.map(t => `<div class="floorsheet-row">
@@ -730,6 +860,28 @@
         options: { responsive: true, plugins:{legend:{display:false}} }
       });
     }
+
+    // Global modal functions
+    window.showGainersModal = function() {
+      const allData = getAllMarketData().sort((a,b) => b.change - a.change);
+      showModal('📈 All Gainers', allData, ['Symbol', 'Name', 'Price', 'Change%']);
+    };
+    window.showLosersModal = function() {
+      const allData = getAllMarketData().sort((a,b) => a.change - b.change);
+      showModal('📉 All Losers', allData, ['Symbol', 'Name', 'Price', 'Change%']);
+    };
+    window.showTurnoverModal = function() {
+      const allData = getAllMarketData().sort((a,b) => parseFloat(b.turnover) - parseFloat(a.turnover));
+      showModal('🔥 All Turnover', allData, ['Symbol', 'Name', 'Turnover', 'Volume']);
+    };
+    window.showVolumeModal = function() {
+      const allData = getAllMarketData().sort((a,b) => parseFloat(b.volume) - parseFloat(a.volume));
+      showModal('📊 All Volume', allData, ['Symbol', 'Name', 'Volume', 'Turnover']);
+    };
+    window.showTransactionsModal = function() {
+      const allData = getAllMarketData().sort((a,b) => b.transactions - a.transactions);
+      showModal('💱 All Transactions', allData, ['Symbol', 'Name', 'Transactions', 'Volume']);
+    };
 
     // Global search
     document.getElementById('globalAnalyzeBtn').addEventListener('click', ()=>{
