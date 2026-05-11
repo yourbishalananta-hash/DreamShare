@@ -77,3 +77,25 @@ const stockDatabase = [
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = stockDatabase;
 }
+// Function to display the stocks on the page
+function renderStocks() {
+    const listContainer = document.getElementById('stock-list');
+    
+    // Clear the "Loading" text
+    listContainer.innerHTML = ''; 
+
+    // Loop through the 57 stocks and create HTML for each
+    stockDatabase.forEach(stock => {
+        const stockHTML = `
+            <div class="stock-card">
+                <h3>${stock.symbol}</h3>
+                <p>${stock.name}</p>
+                <span>${stock.sector} | ${stock.exchange}</span>
+            </div>
+        `;
+        listContainer.innerHTML += stockHTML;
+    });
+}
+
+// Run the function as soon as the page loads
+window.onload = renderStocks;
