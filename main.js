@@ -2,13 +2,80 @@
   // Current state
   let currentSymbol = "AAPL";
   let activeTab = "overview";
+  let currentStockData = null;
 
   const marketIndices = {
     "S&P 500": { value: 5120.45, change: 0.62 },
     "NASDAQ": { value: 18250.30, change: 1.15 },
     "DJIA": { value: 38940.12, change: -0.24 },
-    "VIX": { value: 15.80, change: -3.42 }
+    "VIX": { value: 15.80, change: -3.42 },
+    "Russell 2000": { value: 2085.67, change: 0.85 }
   };
+
+  // Generate comprehensive stock data
+  function generateStockDetails(symbol) {
+    const info = getStockInfo(symbol);
+    const basePrice = info.basePrice;
+    const volatility = basePrice * 0.15;
+    
+    return {
+      symbol: symbol,
+      companyName: info.name,
+      sector: info.sector,
+      exchange: info.exchange,
+      country: info.country,
+      
+      // Price Information
+      ltp: basePrice + (Math.random() - 0.5) * volatility * 0.1,
+      open: basePrice + (Math.random() - 0.5) * volatility * 0.08,
+      high: basePrice + Math.random() * volatility * 0.05,
+      low: basePrice - Math.random() * volatility * 0.05,
+      prevClose: basePrice + (Math.random() - 0.5) * volatility * 0.08,
+      
+      // 52 Week Range
+      week52High: basePrice * (1 + Math.random() * 0.3),
+      week52Low: basePrice * (1 - Math.random() * 0.25),
+      
+      // Volume & Turnover
+      volume: Math.floor(Math.random() * 5000000 + 500000),
+      avgVolume: Math.floor(Math.random() * 4000000 + 400000),
+      turnover: basePrice * Math.floor(Math.random() * 5000000 + 500000),
+      
+      // Market Information
+      marketCap: (basePrice * Math.floor(Math.random() * 5000000000 + 1000000000)),
+      sharesOutstanding: Math.floor(Math.random() * 5000000000 + 500000000),
+      freeFloat: Math.floor(Math.random() * 3000000000 + 300000000),
+      
+      // Fundamental Ratios
+      peRatio: (basePrice / (Math.random() * 10 + 2)).toFixed(2),
+      pbRatio: (basePrice / (Math.random() * 50 + 10)).toFixed(2),
+      eps: (basePrice / (Math.random() * 30 + 5)).toFixed(2),
+      bookValue: (basePrice / (Math.random() * 5 + 1)).toFixed(2),
+      roe: (Math.random() * 30 + 5).toFixed(2),
+      roa: (Math.random() * 15 + 2).toFixed(2),
+      debtToEquity: (Math.random() * 2).toFixed(2),
+      dividendYield: (Math.random() * 3).toFixed(2),
+      
+      // Growth Metrics
+      revenueGrowth: (Math.random() * 30 - 5).toFixed(2),
+      earningsGrowth: (Math.random() * 40 - 10).toFixed(2),
+      
+      // Trading Information
+      dayRange: {
+        low: basePrice - Math.random() * volatility * 0.05,
+        high: basePrice + Math.random() * volatility * 0.05
+      },
+      
+      // Additional Info
+      beta: (Math.random() * 2 + 0.5).toFixed(2),
+      faceValue: 10,
+      industryPE: (Math.random() * 30 + 10).toFixed(2),
+      
+      // Corporate Actions
+      lastDividend: (Math.random() * 5).toFixed(2),
+      exDividendDate: new Date(Date.now() + Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    };
+  }
 
   function getStockInfo(sym) {
     const found = stockDatabase.find(s => s.symbol === sym);
@@ -141,11 +208,100 @@
   }
 
   // ============================================
+  // STOCK DETAILS MODAL
+  // ============================================
+  function showStockDetails(symbol) {
+    const stockData = generateStockDetails(symbol);
+    const overlay = document.getElementById('modalOverlay');
+    const content = document.getElementById('modalContent');
+    
+    const changePercent = ((stockData.ltp - stockData.prevClose) / stockData.prevClose * 100).toFixed(2);
+    const isPositive = parseFloat(changePercent) >= 0;
+    
+    let html = `
+      <button class="modal-close" onclick="document.getElementById('modalOverlay').classList.remove('active')">
+        <i class="fas fa-times"></i>
+      </button>
+      
+      <div style="margin-bottom: 1.5rem;">
+        <h2 style="margin-bottom: 0.3rem;">${stockData.symbol} · ${stockData.companyName}</h2>
+        <p style="color: #6b7a99; margin: 0;">${stockData.exchange} · ${stockData.sector} · ${stockData.country}</p>
+      </div>
+      
+      <div style="display: flex; align-items: baseline; gap: 1rem; margin-bottom: 1.5rem; padding: 1rem; background: #f8fafd; border-radius: 1rem;">
+        <span style="font-size: 2rem; font-weight: 700; color: #0a1f38;">$${stockData.ltp.toFixed(2)}</span>
+        <span class="${isPositive ? 'positive' : 'negative'}" style="font-size: 1.2rem;">
+          ${isPositive ? '+' : ''}${changePercent}%
+        </span>
+      </div>
+      
+      <div class="grid-2col" style="margin-bottom: 1rem;">
+        <div>
+          <h4 style="margin-bottom: 0.8rem; color: #0a2540;">📊 Price Information</h4>
+          <div class="detail-row"><span>Open</span><span><strong>$${stockData.open.toFixed(2)}</strong></span></div>
+          <div class="detail-row"><span>High</span><span><strong>$${stockData.high.toFixed(2)}</strong></span></div>
+          <div class="detail-row"><span>Low</span><span><strong>$${stockData.low.toFixed(2)}</strong></span></div>
+          <div class="detail-row"><span>Prev Close</span><span><strong>$${stockData.prevClose.toFixed(2)}</strong></span></div>
+          <div class="detail-row"><span>Day Range</span><span><strong>$${stockData.dayRange.low.toFixed(2)} - $${stockData.dayRange.high.toFixed(2)}</strong></span></div>
+          <div class="detail-row"><span>52 Week High</span><span><strong>$${stockData.week52High.toFixed(2)}</strong></span></div>
+          <div class="detail-row"><span>52 Week Low</span><span><strong>$${stockData.week52Low.toFixed(2)}</strong></span></div>
+        </div>
+        
+        <div>
+          <h4 style="margin-bottom: 0.8rem; color: #0a2540;">💰 Market Information</h4>
+          <div class="detail-row"><span>Market Cap</span><span><strong>$${(stockData.marketCap / 1e9).toFixed(2)}B</strong></span></div>
+          <div class="detail-row"><span>Shares Outstanding</span><span><strong>${(stockData.sharesOutstanding / 1e9).toFixed(2)}B</strong></span></div>
+          <div class="detail-row"><span>Free Float</span><span><strong>${(stockData.freeFloat / 1e9).toFixed(2)}B</strong></span></div>
+          <div class="detail-row"><span>Volume</span><span><strong>${(stockData.volume / 1e6).toFixed(2)}M</strong></span></div>
+          <div class="detail-row"><span>Avg Volume</span><span><strong>${(stockData.avgVolume / 1e6).toFixed(2)}M</strong></span></div>
+          <div class="detail-row"><span>Turnover</span><span><strong>$${(stockData.turnover / 1e9).toFixed(2)}B</strong></span></div>
+          <div class="detail-row"><span>Beta</span><span><strong>${stockData.beta}</strong></span></div>
+        </div>
+      </div>
+      
+      <div class="grid-2col" style="margin-bottom: 1rem;">
+        <div>
+          <h4 style="margin-bottom: 0.8rem; color: #0a2540;">📈 Fundamental Ratios</h4>
+          <div class="detail-row"><span>P/E Ratio</span><span><strong>${stockData.peRatio}</strong></span></div>
+          <div class="detail-row"><span>P/B Ratio</span><span><strong>${stockData.pbRatio}</strong></span></div>
+          <div class="detail-row"><span>EPS</span><span><strong>$${stockData.eps}</strong></span></div>
+          <div class="detail-row"><span>Book Value</span><span><strong>$${stockData.bookValue}</strong></span></div>
+          <div class="detail-row"><span>ROE</span><span><strong>${stockData.roe}%</strong></span></div>
+          <div class="detail-row"><span>ROA</span><span><strong>${stockData.roa}%</strong></span></div>
+          <div class="detail-row"><span>Debt to Equity</span><span><strong>${stockData.debtToEquity}</strong></span></div>
+          <div class="detail-row"><span>Dividend Yield</span><span><strong>${stockData.dividendYield}%</strong></span></div>
+          <div class="detail-row"><span>Face Value</span><span><strong>$${stockData.faceValue}</strong></span></div>
+          <div class="detail-row"><span>Industry P/E</span><span><strong>${stockData.industryPE}</strong></span></div>
+        </div>
+        
+        <div>
+          <h4 style="margin-bottom: 0.8rem; color: #0a2540;">📊 Growth & Returns</h4>
+          <div class="detail-row"><span>Revenue Growth</span><span><strong>${stockData.revenueGrowth}%</strong></span></div>
+          <div class="detail-row"><span>Earnings Growth</span><span><strong>${stockData.earningsGrowth}%</strong></span></div>
+          <div class="detail-row"><span>Last Dividend</span><span><strong>$${stockData.lastDividend}</strong></span></div>
+          <div class="detail-row"><span>Ex-Dividend Date</span><span><strong>${stockData.exDividendDate}</strong></span></div>
+        </div>
+      </div>
+      
+      <div style="text-align: center; margin-top: 1rem;">
+        <button class="see-more-btn" onclick="document.getElementById('globalSymbolInput').value='${symbol}'; currentSymbol='${symbol}'; switchTab('overview'); document.getElementById('modalOverlay').classList.remove('active');">
+          <i class="fas fa-chart-line"></i> Analyze This Stock
+        </button>
+      </div>
+    `;
+    
+    content.innerHTML = html;
+    overlay.classList.add('active');
+    
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) overlay.classList.remove('active');
+    });
+  }
+
+  // ============================================
   // UNIVERSAL AUTOCOMPLETE SYSTEM
-  // Works on ALL search bars with name & symbol search
   // ============================================
   
-  // Search function: matches by symbol OR company name
   function searchStocks(query) {
     const upperQuery = query.toUpperCase();
     return stockDatabase.filter(stock => 
@@ -154,7 +310,6 @@
     );
   }
 
-  // Create dropdown HTML for suggestions
   function createSuggestionsHTML(matches, query) {
     if (matches.length === 0) {
       return `
@@ -172,13 +327,11 @@
       const priceChange = (Math.random() * 4 - 2).toFixed(2);
       const isPositive = parseFloat(priceChange) >= 0;
       
-      // Highlight matching text in symbol
       const highlightedSym = stock.symbol.replace(
         new RegExp(`(${query})`, 'gi'),
         '<span style="background:#fff3cd; padding:0.1rem 0.3rem; border-radius:0.3rem;">\$1</span>'
       );
       
-      // Highlight matching text in name
       const highlightedName = stock.name.replace(
         new RegExp(`(\${query})`, 'gi'),
         '<span style="background:#fff3cd; padding:0.1rem 0.3rem; border-radius:0.3rem;">\$1</span>'
@@ -203,11 +356,9 @@
     return html;
   }
 
-  // Setup autocomplete for any input field
   function setupAutocomplete(inputElement, dropdownElement, onSelectCallback) {
     let debounceTimer;
     
-    // Show suggestions on focus
     inputElement.addEventListener('focus', function() {
       const val = this.value.trim();
       if (val.length === 0) {
@@ -217,7 +368,6 @@
       }
     });
     
-    // Update suggestions as user types (with debounce)
     inputElement.addEventListener('input', function() {
       clearTimeout(debounceTimer);
       const val = this.value.trim();
@@ -228,10 +378,9 @@
         } else {
           updateSuggestions(val, dropdownElement);
         }
-      }, 200); // 200ms debounce for smooth typing
+      }, 200);
     });
     
-    // Handle suggestion click
     dropdownElement.addEventListener('click', function(e) {
       const item = e.target.closest('.suggestion-item');
       if (item) {
@@ -242,7 +391,6 @@
       }
     });
     
-    // Close dropdown when clicking outside
     document.addEventListener('click', function(e) {
       if (!inputElement.parentElement.contains(e.target) && 
           !dropdownElement.contains(e.target)) {
@@ -250,7 +398,6 @@
       }
     });
     
-    // Keyboard navigation
     inputElement.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') {
         dropdownElement.classList.remove('active');
@@ -263,7 +410,6 @@
           dropdownElement.classList.remove('active');
           if (onSelectCallback) onSelectCallback(match.symbol);
         } else if (val.length > 0) {
-          // Try to find by name
           const nameMatch = stockDatabase.find(s => s.name.toUpperCase().includes(val));
           if (nameMatch) {
             inputElement.value = nameMatch.symbol;
@@ -310,9 +456,7 @@
     dropdownElement.classList.add('active');
   }
 
-  // Create dropdown element dynamically
   function createDropdownFor(inputElement) {
-    // Remove existing dropdown if any
     const existingDropdown = inputElement.parentElement.querySelector('.suggestions-dropdown');
     if (existingDropdown) {
       existingDropdown.remove();
@@ -327,7 +471,6 @@
     dropdown.style.width = '350px';
     dropdown.style.zIndex = '999';
     
-    // Make parent relative if not already
     if (inputElement.parentElement.style.position !== 'relative') {
       inputElement.parentElement.style.position = 'relative';
     }
@@ -336,9 +479,7 @@
     return dropdown;
   }
 
-  // Initialize autocomplete for ALL search inputs
   function initializeAllAutocomplete() {
-    // 1. Global search bar
     const globalInput = document.getElementById('globalSymbolInput');
     const globalDropdown = document.getElementById('suggestionsDropdown');
     if (globalInput && globalDropdown) {
@@ -349,7 +490,6 @@
     }
   }
 
-  // Setup autocomplete for tab-specific search bars
   function setupTabAutocomplete() {
     const tabSearchConfigs = [
       { inputId: 'depthSymbolInput', tabId: 'marketdepth' },
@@ -367,7 +507,6 @@
         setupAutocomplete(input, dropdown, (sym) => {
           currentSymbol = sym;
           if (config.tabId === 'technicals') {
-            // For technical screener, just update the filter
             input.value = sym;
             const container = document.getElementById('tabContent');
             container.innerHTML = renderTechnicalScreener(sym);
@@ -396,7 +535,7 @@
     allStocks.forEach(stock => {
       const isPositive = stock.change >= 0;
       html += `
-        <div class="stock-card" data-symbol="${stock.symbol}">
+        <div class="stock-card" data-symbol="${stock.symbol}" style="cursor: pointer;">
           <div class="stock-info">
             <h4>${stock.symbol}</h4>
             <p>${stock.name} · ${stock.sector}</p>
@@ -413,15 +552,12 @@
     
     container.innerHTML = html;
     
-    // Add click handlers to stock cards
+    // Add click handlers - show stock details modal
     document.querySelectorAll('#stock-list .stock-card').forEach(card => {
       card.addEventListener('click', function() {
         const sym = this.dataset.symbol;
         if (sym) {
-          currentSymbol = sym;
-          document.getElementById('globalSymbolInput').value = sym;
-          switchTab('overview');
-          document.getElementById('tabContent').scrollIntoView({ behavior: 'smooth' });
+          showStockDetails(sym);
         }
       });
     });
@@ -438,6 +574,10 @@
     const topVolume = [...allData].sort((a,b) => parseFloat(b.volume) - parseFloat(a.volume)).slice(0, 5);
     const topTransactions = [...allData].sort((a,b) => b.transactions - a.transactions).slice(0, 5);
     
+    const stockData = generateStockDetails(currentSymbol);
+    const changePercent = ((stockData.ltp - stockData.prevClose) / stockData.prevClose * 100).toFixed(2);
+    const isPositive = parseFloat(changePercent) >= 0;
+    
     const news = [
       "Fed holds rates steady, signals cautious approach",
       "AI chip demand drives semiconductor rally",
@@ -449,8 +589,24 @@
     return `
       <div class="grid-2col" style="margin-bottom:1.5rem;">
         <div>
-          <div class="card-title"><i class="fas fa-chart-line"></i> ${currentSymbol} · Price Action</div>
+          <div class="card-title">
+            <i class="fas fa-chart-line"></i> 
+            <span style="cursor: pointer; text-decoration: underline;" onclick="showStockDetails('${currentSymbol}')">
+              ${currentSymbol} · ${stockData.companyName}
+            </span>
+          </div>
+          <div style="display: flex; gap: 1rem; margin-bottom: 0.5rem; font-size: 0.9rem;">
+            <span><strong>LTP:</strong> $${stockData.ltp.toFixed(2)}</span>
+            <span class="${isPositive ? 'positive' : 'negative'}">${isPositive ? '+' : ''}${changePercent}%</span>
+            <span><strong>Vol:</strong> ${(stockData.volume/1e6).toFixed(1)}M</span>
+          </div>
           <canvas id="overviewMiniChart" height="170"></canvas>
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+            <span class="badge">H: $${stockData.week52High.toFixed(2)}</span>
+            <span class="badge">L: $${stockData.week52Low.toFixed(2)}</span>
+            <span class="badge">MCap: $${(stockData.marketCap/1e9).toFixed(1)}B</span>
+            <span class="badge">P/E: ${stockData.peRatio}</span>
+          </div>
         </div>
         <div>
           <div class="card-title"><i class="fas fa-newspaper"></i> Latest Market News</div>
@@ -461,12 +617,24 @@
       <div class="grid-3col">
         <div>
           <div class="card-title"><i class="fas fa-arrow-up positive"></i> Top Gainers</div>
-          ${topGainers.length > 0 ? topGainers.map(g => `<div class="list-row"><span><strong>${g.symbol}</strong></span><span>$${g.price}</span><span class="positive">+${g.change}%</span></div>`).join('') : '<p style="color:#6b7a99;">No gainers today</p>'}
+          ${topGainers.length > 0 ? topGainers.map(g => `
+            <div class="list-row" style="cursor: pointer;" onclick="showStockDetails('${g.symbol}')">
+              <span><strong>${g.symbol}</strong></span>
+              <span>$${g.price}</span>
+              <span class="positive">+${g.change}%</span>
+            </div>
+          `).join('') : '<p style="color:#6b7a99;">No gainers today</p>'}
           <button class="see-more-btn" onclick="window.showAllGainers()">See All Gainers <i class="fas fa-chevron-right"></i></button>
         </div>
         <div>
           <div class="card-title"><i class="fas fa-arrow-down negative"></i> Top Losers</div>
-          ${topLosers.length > 0 ? topLosers.map(l => `<div class="list-row"><span><strong>${l.symbol}</strong></span><span>$${l.price}</span><span class="negative">${l.change}%</span></div>`).join('') : '<p style="color:#6b7a99;">No losers today</p>'}
+          ${topLosers.length > 0 ? topLosers.map(l => `
+            <div class="list-row" style="cursor: pointer;" onclick="showStockDetails('${l.symbol}')">
+              <span><strong>${l.symbol}</strong></span>
+              <span>$${l.price}</span>
+              <span class="negative">${l.change}%</span>
+            </div>
+          `).join('') : '<p style="color:#6b7a99;">No losers today</p>'}
           <button class="see-more-btn" onclick="window.showAllLosers()">See All Losers <i class="fas fa-chevron-right"></i></button>
         </div>
         <div>
@@ -499,12 +667,21 @@
 
   function renderMarketDepth(symbol = currentSymbol) {
     const info = getStockInfo(symbol);
+    const stockData = generateStockDetails(symbol);
     const bids = [], asks = [];
     for (let i=0; i<7; i++) {
       bids.push({ price: (info.basePrice - 0.22*i - Math.random()*0.5).toFixed(2), volume: Math.floor(Math.random()*900+150) });
       asks.push({ price: (info.basePrice + 0.2*i + Math.random()*0.45).toFixed(2), volume: Math.floor(Math.random()*800+130) });
     }
     return `
+      <div style="margin-bottom: 1rem;">
+        <h3 style="color: #0a2540; margin-bottom: 0.3rem;">
+          <i class="fas fa-chart-bar"></i> ${symbol} · ${info.name}
+        </h3>
+        <p style="color: #6b7a99; font-size: 0.9rem;">
+          LTP: $${stockData.ltp.toFixed(2)} | Vol: ${(stockData.volume/1e6).toFixed(2)}M | MCap: $${(stockData.marketCap/1e9).toFixed(2)}B
+        </p>
+      </div>
       <div class="inline-search" style="position: relative;">
         <input type="text" id="depthSymbolInput" placeholder="Search by symbol or name..." value="${symbol}" autocomplete="off">
         <button id="depthSearchBtn"><i class="fas fa-search"></i> Load</button>
@@ -527,7 +704,7 @@
     const rows = symbols.map(s => {
       const ind = computeFullIndicators(generatePriceSeries(s.symbol, 55));
       const signal = ind.rsi > 70 ? 'Overbought' : ind.rsi < 30 ? 'Oversold' : ind.macd > 0 ? 'Bullish' : 'Bearish';
-      return `<div class="list-row">
+      return `<div class="list-row" style="cursor: pointer;" onclick="showStockDetails('${s.symbol}')">
         <span><strong>${s.symbol}</strong></span>
         <span>$${ind.current}</span>
         <span>RSI ${ind.rsi}</span>
@@ -550,24 +727,41 @@
 
   function renderFundamental(symbol = currentSymbol) {
     const info = getStockInfo(symbol);
+    const stockData = generateStockDetails(symbol);
     return `
+      <div style="margin-bottom: 1rem;">
+        <h3 style="color: #0a2540; margin-bottom: 0.3rem;">
+          <i class="fas fa-coins"></i> ${symbol} · ${info.name}
+        </h3>
+      </div>
       <div class="inline-search" style="position: relative;">
         <input type="text" id="fundSymbolInput" placeholder="Search by symbol or name..." value="${symbol}" autocomplete="off">
         <button id="fundSearchBtn"><i class="fas fa-search"></i> Load</button>
       </div>
-      <div class="card-title"><i class="fas fa-coins"></i> Fundamental Analysis · ${symbol}</div>
+      <div class="card-title"><i class="fas fa-file-invoice"></i> Fundamental Analysis</div>
       <div class="indicator-grid">
-        <div><strong>Exchange:</strong> ${info.exchange}</div>
-        <div><strong>Country:</strong> ${info.country}</div>
-        <div><strong>Sector:</strong> ${info.sector}</div>
-        <div><strong>Base Price:</strong> $${info.basePrice.toFixed(2)}</div>
-        <div><strong>Company:</strong> ${info.name}</div>
-        <div><strong>Symbol:</strong> ${info.symbol}</div>
+        <div><strong>LTP:</strong> $${stockData.ltp.toFixed(2)}</div>
+        <div><strong>Market Cap:</strong> $${(stockData.marketCap/1e9).toFixed(2)}B</div>
+        <div><strong>P/E Ratio:</strong> ${stockData.peRatio}</div>
+        <div><strong>P/B Ratio:</strong> ${stockData.pbRatio}</div>
+        <div><strong>EPS:</strong> $${stockData.eps}</div>
+        <div><strong>Book Value:</strong> $${stockData.bookValue}</div>
+        <div><strong>ROE:</strong> ${stockData.roe}%</div>
+        <div><strong>ROA:</strong> ${stockData.roa}%</div>
+        <div><strong>Debt/Equity:</strong> ${stockData.debtToEquity}</div>
+        <div><strong>Dividend Yield:</strong> ${stockData.dividendYield}%</div>
+        <div><strong>52W High:</strong> $${stockData.week52High.toFixed(2)}</div>
+        <div><strong>52W Low:</strong> $${stockData.week52Low.toFixed(2)}</div>
+        <div><strong>Volume:</strong> ${(stockData.volume/1e6).toFixed(2)}M</div>
+        <div><strong>Beta:</strong> ${stockData.beta}</div>
+        <div><strong>Industry P/E:</strong> ${stockData.industryPE}</div>
+        <div><strong>Revenue Growth:</strong> ${stockData.revenueGrowth}%</div>
       </div>
     `;
   }
 
   function renderFloorsheet(symbol = currentSymbol) {
+    const info = getStockInfo(symbol);
     const brokers = ["GOLDMAN", "MORGAN", "JPMS", "CITI", "BOFA", "WELLS", "UBS", "CSFB"];
     const trans = [];
     for (let i=0; i<9; i++) {
@@ -580,11 +774,16 @@
       });
     }
     return `
+      <div style="margin-bottom: 1rem;">
+        <h3 style="color: #0a2540; margin-bottom: 0.3rem;">
+          <i class="fas fa-receipt"></i> ${symbol} · ${info.name}
+        </h3>
+      </div>
       <div class="inline-search" style="position: relative;">
         <input type="text" id="floorSymbolInput" placeholder="Search by symbol or name..." value="${symbol}" autocomplete="off">
         <button id="floorSearchBtn"><i class="fas fa-search"></i> Load</button>
       </div>
-      <div class="card-title"><i class="fas fa-receipt"></i> Floorsheet · ${symbol}</div>
+      <div class="card-title"><i class="fas fa-exchange-alt"></i> Floorsheet Transactions</div>
       <div class="floorsheet-row header-row">
         <span>Time</span><span>Price</span><span>Vol</span><span>Buyer</span><span>Seller</span>
       </div>
@@ -599,9 +798,15 @@
   }
 
   function renderForecast(symbol = currentSymbol) {
+    const info = getStockInfo(symbol);
     const prices = generatePriceSeries(symbol, 40);
     const last = prices[prices.length-1].price;
     return `
+      <div style="margin-bottom: 1rem;">
+        <h3 style="color: #0a2540; margin-bottom: 0.3rem;">
+          <i class="fas fa-chart-pie"></i> ${symbol} · ${info.name}
+        </h3>
+      </div>
       <div class="inline-search" style="position: relative;">
         <input type="text" id="forecastSymbolInput" placeholder="Search by symbol or name..." value="${symbol}" autocomplete="off">
         <button id="forecastSearchBtn"><i class="fas fa-search"></i> Load</button>
@@ -621,24 +826,33 @@
   function renderAIAnalysis(symbol = currentSymbol) {
     const ind = computeFullIndicators(generatePriceSeries(symbol, 60));
     const info = getStockInfo(symbol);
+    const stockData = generateStockDetails(symbol);
     const sentimentScore = (ind.rsi/100*0.4 + (ind.macd>0?0.3:0) + (ind.current>ind.sma20?0.3:0))*100;
     return `
+      <div style="margin-bottom: 1rem;">
+        <h3 style="color: #0a2540; margin-bottom: 0.3rem;">
+          <i class="fas fa-brain"></i> ${symbol} · ${info.name}
+        </h3>
+      </div>
       <div class="inline-search" style="position: relative;">
         <input type="text" id="aiSymbolInput" placeholder="Search by symbol or name..." value="${symbol}" autocomplete="off">
         <button id="aiSearchBtn"><i class="fas fa-search"></i> Load</button>
       </div>
       <div class="ai-box">
-        <h3><i class="fas fa-brain"></i> Advanced AI Analysis · ${symbol} (${info.name})</h3>
+        <h3><i class="fas fa-robot"></i> Advanced AI Analysis</h3>
         <div class="grid-2col" style="margin-top:1rem;">
           <div>
             <p><strong>🧠 Sentiment Score:</strong> ${sentimentScore.toFixed(1)}/100</p>
             <p><strong>📈 Trend:</strong> ${ind.current > ind.sma20 ? 'Bullish' : 'Bearish'}</p>
             <p><strong>📊 RSI:</strong> ${ind.rsi}</p>
             <p><strong>📉 MACD:</strong> ${ind.macd}</p>
+            <p><strong>💵 LTP:</strong> $${stockData.ltp.toFixed(2)}</p>
           </div>
           <div>
             <p><strong>🎯 Support:</strong> $${ind.lowerBB}</p>
             <p><strong>🎯 Resistance:</strong> $${ind.upperBB}</p>
+            <p><strong>📊 P/E:</strong> ${stockData.peRatio}</p>
+            <p><strong>📊 ROE:</strong> ${stockData.roe}%</p>
             <p><strong>💡 Recommendation:</strong> ${sentimentScore>65?'Strong Buy': sentimentScore>45?'Buy on dips': sentimentScore>30?'Hold':'Sell'}</p>
           </div>
         </div>
@@ -664,7 +878,6 @@
     }
     container.innerHTML = html;
     attachTabEvents(tabId);
-    // Setup autocomplete for tab search bars
     setTimeout(setupTabAutocomplete, 100);
     if (tabId === 'overview') setTimeout(drawOverviewMiniChart, 150);
     if (tabId === 'forecast') setTimeout(drawForecastChart, 150);
@@ -761,6 +974,9 @@
     showModal('💱 All Stocks by Transactions', allData, ['Symbol', 'Name', 'Transactions', 'Volume']);
   };
 
+  // Make showStockDetails globally accessible
+  window.showStockDetails = showStockDetails;
+
   // Global search button
   document.getElementById('globalAnalyzeBtn').addEventListener('click', ()=>{
     const val = document.getElementById('globalSymbolInput').value.trim().toUpperCase();
@@ -770,7 +986,6 @@
         currentSymbol = val;
         switchTab(activeTab);
       } else {
-        // Try to find by name
         const nameMatch = stockDatabase.find(s => s.name.toUpperCase().includes(val));
         if (nameMatch) {
           currentSymbol = nameMatch.symbol;
