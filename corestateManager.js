@@ -5,38 +5,17 @@
 class StateManager {
   constructor() {
     this.state = {
-      // Market Data
       stocks: [],
-      indices: {},
-      marketStatus: 'CLOSED',
-      
-      // User Data
-      watchlist: this.loadFromStorage(CONFIG.storage.watchlist, []),
-      portfolio: this.loadFromStorage(CONFIG.storage.portfolio, {
-        balance: 1000000,
-        holdings: [],
-        transactions: []
-      }),
-      alerts: this.loadFromStorage(CONFIG.storage.alerts, []),
-      
-      // UI State
       activeView: 'dashboard',
       activeSymbol: null,
-      theme: this.loadFromStorage(CONFIG.storage.theme, 'light'),
-      sidebarCollapsed: false,
-      rightPanelVisible: true,
-      
-      // Chart State
-      chartTimeframe: CONFIG.charts.defaultTimeframe,
-      chartIndicators: ['SMA20', 'SMA50'],
-      
-      // Connection
+      theme: localStorage.getItem(CONFIG.storage.theme) || 'light',
       isConnected: false,
       lastUpdate: null,
+      watchlist: JSON.parse(localStorage.getItem(CONFIG.storage.watchlist) || '[]'),
     };
     
-    this.listeners = new Map();
-    this.initializeTheme();
+    this.listeners = {};
+    this.applyTheme();
   }
   
   get(key) {
@@ -46,74 +25,60 @@ class StateManager {
   set(key, value) {
     const oldValue = this.state[key];
     this.state[key] = value;
-    this.notify(key, value, oldValue);
     
-    // Auto-save to storage for persistent data
-    if (CONFIG.storage[key]) {
-      this.saveToStorage(CONFIG.storage[key], value);
+    // Notify listeners
+    if (this.listeners[key]) {
+      this.listeners[key].forEach(cb => cb(value, oldValue));
     }
-  }
-  
-  update(key, updater) {
-    const oldValue = this.state[key];
-    const newValue = updater(oldValue);
-    this.state[key] = newValue;
-    this.notify(key, newValue, oldValue);
+    
+    // Auto-save to localStorage for persistent data
+    if (key === 'watchlist') {
+      localStorage.setItem(CONFIG.storage.watchlist, JSON.stringify(value));
+    }
+    if (key === 'theme') {
+      localStorage.setItem(CONFIG.storage.theme, value);
+    }
   }
   
   subscribe(key, callback) {
-    if (!this.listeners.has(key)) {
-      this.listeners.set(key, new Set());
+    if (!this.listeners[key]) {
+      this.listeners[key] = [];
     }
-    this.listeners.get(key).add(callback);
+    this.listeners[key].push(callback);
     
-    // Return unsubscribe function
     return () => {
-      this.listeners.get(key)?.delete(callback);
+      this.listeners[key] = this.listeners[key].filter(cb => cb !== callback);
     };
   }
   
-  notify(key, newValue, oldValue) {
-    const listeners = this.listeners.get(key);
-    if (listeners) {
-      listeners.forEach(callback => {
-        try {
-          callback(newValue, oldValue);
-        } catch (error) {
-          console.error(`Error in state listener for ${key}:`, error);
-        }
-      });
-    }
-  }
-  
-  loadFromStorage(key, defaultValue) {
-    try {
-      const stored = localStorage.getItem(key);
-      return stored ? JSON.parse(stored) : defaultValue;
-    } catch (error) {
-      console.error(`Error loading ${key} from storage:`, error);
-      return defaultValue;
-    }
-  }
-  
-  saveToStorage(key, value) {
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-    } catch (error) {
-      console.error(`Error saving ${key} to storage:`, error);
-    }
-  }
-  
-  initializeTheme() {
+  applyTheme() {
     document.documentElement.setAttribute('data-theme', this.state.theme);
   }
   
   toggleTheme() {
     const newTheme = this.state.theme === 'light' ? 'dark' : 'light';
     this.set('theme', newTheme);
-    document.documentElement.setAttribute('data-theme', newTheme);
+    this.applyTheme();
+    eventBus.emit(EVENTS.THEME_CHANGED, newTheme);
+  }
+  
+  addToWatchlist(symbol) {
+    const watchlist = this.get('watchlist');
+    if (!watchlist.includes(symbol)) {
+      watchlist.push(symbol);
+      this.set('watchlist', watchlist);
+    }
+  }
+  
+  removeFromWatchlist(symbol) {
+    const watchlist = this.get('watchlist');
+    this.set('watchlist', watchlist.filter(s => s !== symbol));
+  }
+  
+  isInWatchlist(symbol) {
+    return this.get('watchlist').includes(symbol);
   }
 }
 
-// Create global state manager instance
+// Create global instance
 const stateManager = new StateManager();
