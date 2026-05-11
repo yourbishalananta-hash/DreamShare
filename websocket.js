@@ -4,55 +4,76 @@
 
 class WebSocketService {
   constructor() {
-    this.socket = null;
+    this.ws = null;
     this.reconnectAttempts = 0;
+    this.isConnected = false;
   }
-
+  
   connect() {
-    console.log('🔌 Connecting to WebSocket...');
-    this.socket = new WebSocket(CONFIG.websocket.url);
-
-    this.socket.onopen = () => {
-      console.log('✅ WebSocket Connected');
-      this.reconnectAttempts = 0;
-      eventBus.emit(EventBus.Events.CONNECTION_CHANGED, 'connected');
-    };
-
-    this.socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        // Update state and notify UI
-        stateManager.set('stocks', data.data);
-        eventBus.emit(EventBus.Events.MARKET_DATA_UPDATED, data.data);
-      } catch (e) {
-        console.error('WS Message Error:', e);
-      }
-    };
-
-    this.socket.onclose = () => {
-      eventBus.emit(EventBus.Events.CONNECTION_CHANGED, 'disconnected');
-      this.handleReconnect();
-    };
-
-    this.socket.onerror = (error) => {
-      console.error('WebSocket Error:', error);
-      this.socket.close();
-    };
-  }
-
-  handleReconnect() {
-    if (this.reconnectAttempts < CONFIG.websocket.maxReconnectAttempts) {
-      this.reconnectAttempts++;
-      console.log(`🔄 Reconnecting in ${CONFIG.websocket.reconnectInterval/1000}s...`);
-      setTimeout(() => this.connect(), CONFIG.websocket.reconnectInterval);
+    if (!CONFIG.features.realTimeUpdates) return;
+    
+    try {
+      this.ws = new WebSocket(CONFIG.websocket.url);
+      
+      this.ws.onopen = () => {
+        console.log('✅ WebSocket connected');
+        this.isConnected = true;
+        this.reconnectAttempts = 0;
+        stateManager.set('isConnected', true);
+        eventBus.emit(EVENTS.CONNECTION_CHANGED, 'connected');
+      };
+      
+      this.ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data && data.data) {
+            stateManager.set('stocks', data.data);
+            stateManager.set('lastUpdate', new Date());
+            eventBus.emit(EVENTS.MARKET_DATA_UPDATED, data.data);
+          }
+        } catch (error) {
+          console.error('WebSocket message error:', error);
+        }
+      };
+      
+      this.ws.onclose = () => {
+        console.log('🔌 WebSocket disconnected');
+        this.isConnected = false;
+        stateManager.set('isConnected', false);
+        eventBus.emit(EVENTS.CONNECTION_CHANGED, 'disconnected');
+        this.attemptReconnect();
+      };
+      
+      this.ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+      
+    } catch (error) {
+      console.error('WebSocket connection error:', error);
+      this.attemptReconnect();
     }
   }
-
-  send(data) {
-    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      this.socket.send(JSON.stringify(data));
+  
+  attemptReconnect() {
+    if (this.reconnectAttempts >= CONFIG.websocket.maxReconnectAttempts) {
+      console.log('Max reconnection attempts reached');
+      return;
+    }
+    
+    this.reconnectAttempts++;
+    console.log(`Reconnecting... Attempt ${this.reconnectAttempts}`);
+    
+    setTimeout(() => {
+      this.connect();
+    }, CONFIG.websocket.reconnectInterval);
+  }
+  
+  disconnect() {
+    if (this.ws) {
+      this.ws.close();
     }
   }
 }
 
+// Create global instance
 const webSocketService = new WebSocketService();
