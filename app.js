@@ -14,7 +14,6 @@ class MarketPulseApp {
     this.updateLoadingProgress(10, 'Loading configuration...');
     
     try {
-      // Initialize components
       this.updateLoadingProgress(30, 'Connecting to server...');
       
       // Load market data
@@ -33,7 +32,7 @@ class MarketPulseApp {
       // Update market status
       this.updateMarketStatus();
       
-      // Hide loading screen
+      // Hide loading screen and show platform
       setTimeout(() => {
         document.getElementById('loadingOverlay').style.display = 'none';
         document.getElementById('mainPlatform').style.display = 'flex';
@@ -48,6 +47,7 @@ class MarketPulseApp {
     } catch (error) {
       console.error('❌ Initialization failed:', error);
       this.updateLoadingProgress(100, 'Failed to initialize. Please refresh.');
+      this.showToast('Failed to load market data. Check your connection.', 'error');
     }
   }
   
@@ -61,7 +61,7 @@ class MarketPulseApp {
         
         this.updateStockCount(data.data.length);
         
-        // FIX: Changed EVENTS to EventBus.Events
+        // Correct event reference
         eventBus.emit(EventBus.Events.MARKET_DATA_UPDATED, data.data);
         console.log(`📊 Loaded ${data.data.length} stocks`);
       }
@@ -76,7 +76,7 @@ class MarketPulseApp {
     eventBus.on(EventBus.Events.MARKET_DATA_UPDATED, (data) => {
       this.updateLastUpdated();
       this.updateStockCount(data.length);
-      this.refreshCurrentView(); // FIX: Actually update the screen
+      this.refreshCurrentView(); // Actually update the UI
     });
     
     // Listen for connection changes
@@ -92,16 +92,16 @@ class MarketPulseApp {
   }
 
   refreshCurrentView() {
-    // This ensures that if the user is on the dashboard, the cards update
+    // Re-render the current view with updated data
     const activeView = stateManager.get('activeView') || 'dashboard';
-    if (activeView === 'dashboard') {
-      // We trigger a re-render of the dashboard logic here
-      // Since you are using a simple render system, we reload the view
-      this.loadView('dashboard'); 
+    
+    if (window.components && window.components.navigateTo) {
+      window.components.navigateTo(activeView);
     }
   }
   
   startPeriodicUpdates() {
+    // Refresh data every minute
     setInterval(async () => {
       try {
         const data = await apiService.getMarketWatch();
@@ -114,26 +114,63 @@ class MarketPulseApp {
       }
     }, CONFIG.market.refreshInterval);
     
+    // Update market status every 30 seconds
     setInterval(() => this.updateMarketStatus(), 30000);
   }
 
-  // --- UI HELPER METHODS (Moved from "components" to here) ---
-
+  // UI Helper Methods
+  
   updateMarketStatus() {
     const now = new Date();
     const [openH, openM] = CONFIG.market.openTime.split(':').map(Number);
     const [closeH, closeM] = CONFIG.market.closeTime.split(':').map(Number);
     
-    const marketOpen = new Date(); marketOpen.setHours(openH, openM, 0);
-    const marketClose = new Date(); marketClose.setHours(closeH, closeM, 0);
+    const marketOpen = new Date(); 
+    marketOpen.setHours(openH, openM, 0);
     
-    const isOpen = now >= marketOpen && now <= marketClose && now.getDay() !== 0 && now.getDay() !== 6;
+    const marketClose = new Date(); 
+    marketClose.setHours(closeH, closeM, 0);
+    
+    const isOpen = now >= marketOpen && now <= marketClose && 
+                   now.getDay() !== 0 && now.getDay() !== 6;
     
     const statusIndicator = document.querySelector('.status-indicator');
     const statusText = document.querySelector('.status-text');
     
-    if (statusIndicator) statusIndicator.className = `status-indicator ${isOpen ? 'open' : 'closed'}`;
-    if (statusText) statusText.textContent = isOpen ? 'Market Open' : 'Market Closed';
+    if (statusIndicator) {
+      statusIndicator.className = `status-indicator ${isOpen ? 'open' : 'closed'}`;
+    }
+    if (statusText) {
+      statusText.textContent = isOpen ? 'Market Open' : 'Market Closed';
+    }
+    
+    // Update market time message
+    const marketTime = document.getElementById('marketTime');
+    if (marketTime) {
+      if (isOpen) {
+        const timeLeft = marketClose - now;
+        const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+        const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+        marketTime.textContent = `Market closes in: ${hours}h ${minutes}m`;
+      } else if (now.getDay() === 0 || now.getDay() === 6) {
+        marketTime.textContent = 'Market Closed (Weekend)';
+      } else {
+        const timeToOpen = marketOpen - now;
+        if (timeToOpen < 0) {
+          // Market closed for the day
+          const nextOpen = new Date(marketOpen);
+          nextOpen.setDate(nextOpen.getDate() + 1);
+          const timeLeft = nextOpen - now;
+          const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+          const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+          marketTime.textContent = `Opens tomorrow at ${CONFIG.market.openTime}`;
+        } else {
+          const hours = Math.floor(timeToOpen / (1000 * 60 * 60));
+          const minutes = Math.floor((timeToOpen % (1000 * 60 * 60)) / (1000 * 60));
+          marketTime.textContent = `Opens in: ${hours}h ${minutes}m`;
+        }
+      }
+    }
   }
 
   updateConnectionStatus(status) {
@@ -141,24 +178,54 @@ class MarketPulseApp {
     if (!connStatus) return;
     
     const icon = connStatus.querySelector('i');
-    if (icon) icon.className = `fas fa-circle ${status === 'connected' ? 'connected' : 'disconnected'}`;
-    connStatus.lastChild.textContent = status === 'connected' ? ' Connected' : ' Disconnected';
+    if (icon) {
+      icon.className = `fas fa-circle ${status === 'connected' ? 'connected' : 'disconnected'}`;
+    }
+    
+    // Update text node (last child)
+    const textNode = connStatus.lastChild;
+    if (textNode) {
+      textNode.textContent = status === 'connected' ? ' Connected' : ' Disconnected';
+    }
   }
 
   showToast(message, type = 'info') {
     const container = document.getElementById('toastContainer');
     if (!container) return;
     
+    const icons = {
+      success: 'fa-check-circle',
+      error: 'fa-exclamation-circle',
+      info: 'fa-info-circle'
+    };
+    
+    const colors = {
+      success: 'var(--success)',
+      error: 'var(--danger)',
+      info: 'var(--primary-500)'
+    };
+    
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
-    toast.innerHTML = `<span>${message}</span>`;
+    toast.innerHTML = `
+      <i class="fas ${icons[type]}" style="color: ${colors[type]};"></i>
+      <span>${message}</span>
+    `;
+    
     container.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+      toast.style.animation = 'slideIn 0.3s ease reverse forwards';
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
   }
 
   updateStockCount(count) {
     const stockCount = document.getElementById('stockCount');
-    if (stockCount) stockCount.textContent = `Stocks: ${count}`;
+    if (stockCount) {
+      stockCount.textContent = `Stocks: ${count}`;
+    }
   }
 
   updateLastUpdated() {
@@ -171,14 +238,13 @@ class MarketPulseApp {
   updateLoadingProgress(percent, message) {
     const progressFill = document.getElementById('progressFill');
     const loadingMessage = document.getElementById('loadingMessage');
-    if (progressFill) progressFill.style.width = `${percent}%`;
-    if (loadingMessage) loadingMessage.textContent = message;
-  }
-
-  // Mock loadView to prevent crash
-  loadView(view) {
-    console.log(`Refreshing view: ${view}`);
-    // In your full app, this would call your component render functions
+    
+    if (progressFill) {
+      progressFill.style.width = `${percent}%`;
+    }
+    if (loadingMessage) {
+      loadingMessage.textContent = message;
+    }
   }
 }
 
