@@ -65,11 +65,10 @@
     };
   }
 
-  // FIXED: Properly separate gainers and losers
   function getAllMarketData() {
     const allData = stockDatabase.map(s => {
       const info = getStockInfo(s.symbol);
-      const randomChange = (Math.random() * 10 - 3); // Range: -3 to +7
+      const randomChange = (Math.random() * 10 - 3);
       const price = (info.basePrice * (1 + randomChange/100)).toFixed(2);
       const change = parseFloat(randomChange.toFixed(2));
       const volume = (Math.random()*8+1).toFixed(2) + 'M';
@@ -89,11 +88,10 @@
     return allData;
   }
 
-  // FIXED: Gainers have positive change, Losers have negative change
   function getTopGainers(count = 5) {
     const allData = getAllMarketData();
     return allData
-      .filter(stock => stock.change > 0) // ONLY positive changes
+      .filter(stock => stock.change > 0)
       .sort((a, b) => b.change - a.change)
       .slice(0, count);
   }
@@ -101,7 +99,7 @@
   function getTopLosers(count = 5) {
     const allData = getAllMarketData();
     return allData
-      .filter(stock => stock.change < 0) // ONLY negative changes
+      .filter(stock => stock.change < 0)
       .sort((a, b) => a.change - b.change)
       .slice(0, count);
   }
@@ -142,17 +140,263 @@
     });
   }
 
-  // Render Market Overview section
+  // ============================================
+  // UNIVERSAL AUTOCOMPLETE SYSTEM
+  // Works on ALL search bars with name & symbol search
+  // ============================================
+  
+  // Search function: matches by symbol OR company name
+  function searchStocks(query) {
+    const upperQuery = query.toUpperCase();
+    return stockDatabase.filter(stock => 
+      stock.symbol.toUpperCase().startsWith(upperQuery) || 
+      stock.name.toUpperCase().includes(upperQuery)
+    );
+  }
+
+  // Create dropdown HTML for suggestions
+  function createSuggestionsHTML(matches, query) {
+    if (matches.length === 0) {
+      return `
+        <div class="dropdown-header">🔍 No results for "${query}"</div>
+        <div class="no-results">
+          <i class="fas fa-search" style="font-size:1.5rem; display:block; margin-bottom:0.5rem;"></i>
+          Try different keywords or symbols
+        </div>
+      `;
+    }
+    
+    let html = `<div class="dropdown-header">🔍 Found ${matches.length} match(es) for "${query}"</div>`;
+    
+    matches.forEach(stock => {
+      const priceChange = (Math.random() * 4 - 2).toFixed(2);
+      const isPositive = parseFloat(priceChange) >= 0;
+      
+      // Highlight matching text in symbol
+      const highlightedSym = stock.symbol.replace(
+        new RegExp(`(${query})`, 'gi'),
+        '<span style="background:#fff3cd; padding:0.1rem 0.3rem; border-radius:0.3rem;">\$1</span>'
+      );
+      
+      // Highlight matching text in name
+      const highlightedName = stock.name.replace(
+        new RegExp(`(\${query})`, 'gi'),
+        '<span style="background:#fff3cd; padding:0.1rem 0.3rem; border-radius:0.3rem;">\$1</span>'
+      );
+      
+      html += `
+        <div class="suggestion-item" data-symbol="\${stock.symbol}">
+          <div class="sym-main">
+            <span class="sym-symbol">${highlightedSym}</span>
+            <span class="sym-name">${highlightedName} · <span class="sym-sector">${stock.sector}</span></span>
+          </div>
+          <div style="text-align:right;">
+            <span class="sym-price">$${stock.basePrice.toFixed(2)}</span>
+            <span class="${isPositive ? 'positive' : 'negative'}" style="font-size:0.75rem; display:block;">
+              ${isPositive ? '+' : ''}${priceChange}%
+            </span>
+          </div>
+        </div>
+      `;
+    });
+    
+    return html;
+  }
+
+  // Setup autocomplete for any input field
+  function setupAutocomplete(inputElement, dropdownElement, onSelectCallback) {
+    let debounceTimer;
+    
+    // Show suggestions on focus
+    inputElement.addEventListener('focus', function() {
+      const val = this.value.trim();
+      if (val.length === 0) {
+        showAllStocks(dropdownElement);
+      } else {
+        updateSuggestions(val, dropdownElement);
+      }
+    });
+    
+    // Update suggestions as user types (with debounce)
+    inputElement.addEventListener('input', function() {
+      clearTimeout(debounceTimer);
+      const val = this.value.trim();
+      
+      debounceTimer = setTimeout(() => {
+        if (val.length === 0) {
+          showAllStocks(dropdownElement);
+        } else {
+          updateSuggestions(val, dropdownElement);
+        }
+      }, 200); // 200ms debounce for smooth typing
+    });
+    
+    // Handle suggestion click
+    dropdownElement.addEventListener('click', function(e) {
+      const item = e.target.closest('.suggestion-item');
+      if (item) {
+        const sym = item.dataset.symbol;
+        inputElement.value = sym;
+        dropdownElement.classList.remove('active');
+        if (onSelectCallback) onSelectCallback(sym);
+      }
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+      if (!inputElement.parentElement.contains(e.target) && 
+          !dropdownElement.contains(e.target)) {
+        dropdownElement.classList.remove('active');
+      }
+    });
+    
+    // Keyboard navigation
+    inputElement.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        dropdownElement.classList.remove('active');
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const val = this.value.trim().toUpperCase();
+        const match = stockDatabase.find(s => s.symbol === val);
+        if (match) {
+          dropdownElement.classList.remove('active');
+          if (onSelectCallback) onSelectCallback(match.symbol);
+        } else if (val.length > 0) {
+          // Try to find by name
+          const nameMatch = stockDatabase.find(s => s.name.toUpperCase().includes(val));
+          if (nameMatch) {
+            inputElement.value = nameMatch.symbol;
+            dropdownElement.classList.remove('active');
+            if (onSelectCallback) onSelectCallback(nameMatch.symbol);
+          }
+        }
+      }
+    });
+  }
+
+  function showAllStocks(dropdownElement) {
+    const allStocks = stockDatabase;
+    let html = `<div class="dropdown-header">📊 All Available Stocks (${allStocks.length})</div>`;
+    
+    allStocks.forEach(stock => {
+      const priceChange = (Math.random() * 4 - 2).toFixed(2);
+      const isPositive = parseFloat(priceChange) >= 0;
+      
+      html += `
+        <div class="suggestion-item" data-symbol="${stock.symbol}">
+          <div class="sym-main">
+            <span class="sym-symbol">${stock.symbol}</span>
+            <span class="sym-name">${stock.name} · <span class="sym-sector">${stock.sector}</span></span>
+          </div>
+          <div style="text-align:right;">
+            <span class="sym-price">$${stock.basePrice.toFixed(2)}</span>
+            <span class="${isPositive ? 'positive' : 'negative'}" style="font-size:0.75rem; display:block;">
+              ${isPositive ? '+' : ''}${priceChange}%
+            </span>
+          </div>
+        </div>
+      `;
+    });
+    
+    dropdownElement.innerHTML = html;
+    dropdownElement.classList.add('active');
+  }
+
+  function updateSuggestions(query, dropdownElement) {
+    const matches = searchStocks(query);
+    const html = createSuggestionsHTML(matches, query);
+    dropdownElement.innerHTML = html;
+    dropdownElement.classList.add('active');
+  }
+
+  // Create dropdown element dynamically
+  function createDropdownFor(inputElement) {
+    // Remove existing dropdown if any
+    const existingDropdown = inputElement.parentElement.querySelector('.suggestions-dropdown');
+    if (existingDropdown) {
+      existingDropdown.remove();
+    }
+    
+    const dropdown = document.createElement('div');
+    dropdown.className = 'suggestions-dropdown';
+    dropdown.style.position = 'absolute';
+    dropdown.style.top = '100%';
+    dropdown.style.left = '0';
+    dropdown.style.marginTop = '5px';
+    dropdown.style.width = '350px';
+    dropdown.style.zIndex = '999';
+    
+    // Make parent relative if not already
+    if (inputElement.parentElement.style.position !== 'relative') {
+      inputElement.parentElement.style.position = 'relative';
+    }
+    
+    inputElement.parentElement.appendChild(dropdown);
+    return dropdown;
+  }
+
+  // Initialize autocomplete for ALL search inputs
+  function initializeAllAutocomplete() {
+    // 1. Global search bar
+    const globalInput = document.getElementById('globalSymbolInput');
+    const globalDropdown = document.getElementById('suggestionsDropdown');
+    if (globalInput && globalDropdown) {
+      setupAutocomplete(globalInput, globalDropdown, (sym) => {
+        currentSymbol = sym;
+        switchTab(activeTab);
+      });
+    }
+  }
+
+  // Setup autocomplete for tab-specific search bars
+  function setupTabAutocomplete() {
+    const tabSearchConfigs = [
+      { inputId: 'depthSymbolInput', tabId: 'marketdepth' },
+      { inputId: 'fundSymbolInput', tabId: 'fundamental' },
+      { inputId: 'floorSymbolInput', tabId: 'floorsheet' },
+      { inputId: 'forecastSymbolInput', tabId: 'forecast' },
+      { inputId: 'aiSymbolInput', tabId: 'ai' },
+      { inputId: 'techSymbolFilter', tabId: 'technicals' }
+    ];
+    
+    tabSearchConfigs.forEach(config => {
+      const input = document.getElementById(config.inputId);
+      if (input) {
+        const dropdown = createDropdownFor(input);
+        setupAutocomplete(input, dropdown, (sym) => {
+          currentSymbol = sym;
+          if (config.tabId === 'technicals') {
+            // For technical screener, just update the filter
+            input.value = sym;
+            const container = document.getElementById('tabContent');
+            container.innerHTML = renderTechnicalScreener(sym);
+            attachTabEvents('technicals');
+          } else {
+            switchTab(config.tabId);
+          }
+        });
+      }
+    });
+  }
+
+  // ============================================
+  // RENDER MARKET OVERVIEW
+  // ============================================
   function renderMarketOverview() {
     const allStocks = getAllMarketData();
     const container = document.getElementById('stock-list');
     
-    let html = '<div class="market-grid">';
+    if (!container.classList.contains('market-grid')) {
+      container.classList.add('market-grid');
+    }
+    
+    let html = '';
     
     allStocks.forEach(stock => {
       const isPositive = stock.change >= 0;
       html += `
-        <div class="stock-card" data-symbol="${stock.symbol}" style="cursor: pointer;">
+        <div class="stock-card" data-symbol="${stock.symbol}">
           <div class="stock-info">
             <h4>${stock.symbol}</h4>
             <p>${stock.name} · ${stock.sector}</p>
@@ -167,158 +411,25 @@
       `;
     });
     
-    html += '</div>';
     container.innerHTML = html;
     
-    // Add click handlers
-    document.querySelectorAll('.stock-card').forEach(card => {
+    // Add click handlers to stock cards
+    document.querySelectorAll('#stock-list .stock-card').forEach(card => {
       card.addEventListener('click', function() {
         const sym = this.dataset.symbol;
-        currentSymbol = sym;
-        document.getElementById('globalSymbolInput').value = sym;
-        switchTab('overview');
-      });
-    });
-  }
-
-  // ---------- SUGGESTIONS / AUTOCOMPLETE ----------
-  function setupAutocomplete() {
-    const input = document.getElementById('globalSymbolInput');
-    const dropdown = document.getElementById('suggestionsDropdown');
-    const searchWrapper = document.getElementById('searchWrapper');
-    
-    input.addEventListener('focus', function() {
-      const val = this.value.trim().toUpperCase();
-      if (val.length === 0) {
-        showAllSuggestions(dropdown);
-      } else {
-        filterSuggestions(val, dropdown);
-      }
-    });
-    
-    input.addEventListener('input', function() {
-      const val = this.value.trim().toUpperCase();
-      if (val.length === 0) {
-        showAllSuggestions(dropdown);
-      } else {
-        filterSuggestions(val, dropdown);
-      }
-    });
-    
-    dropdown.addEventListener('click', function(e) {
-      const item = e.target.closest('.suggestion-item');
-      if (item) {
-        const sym = item.dataset.symbol;
-        input.value = sym;
-        dropdown.classList.remove('active');
-        currentSymbol = sym;
-        switchTab(activeTab);
-      }
-    });
-    
-    document.addEventListener('click', function(e) {
-      if (!searchWrapper.contains(e.target)) {
-        dropdown.classList.remove('active');
-      }
-    });
-    
-    input.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') dropdown.classList.remove('active');
-      if (e.key === 'Enter') {
-        const val = this.value.trim().toUpperCase();
-        if (val && stockDatabase.find(s => s.symbol === val)) {
-          dropdown.classList.remove('active');
-          currentSymbol = val;
-          switchTab(activeTab);
+        if (sym) {
+          currentSymbol = sym;
+          document.getElementById('globalSymbolInput').value = sym;
+          switchTab('overview');
+          document.getElementById('tabContent').scrollIntoView({ behavior: 'smooth' });
         }
-      }
-    });
-  }
-  
-  function showAllSuggestions(dropdown) {
-    const allStocks = stockDatabase;
-    
-    if (allStocks.length === 0) {
-      dropdown.innerHTML = '<div class="no-results">No stocks available</div>';
-      dropdown.classList.add('active');
-      return;
-    }
-    
-    let html = '<div class="dropdown-header">📊 All Available Stocks (' + allStocks.length + ')</div>';
-    
-    allStocks.forEach(stock => {
-      const priceChange = (Math.random() * 4 - 2).toFixed(2);
-      const isPositive = parseFloat(priceChange) >= 0;
-      
-      html += `
-        <div class="suggestion-item" data-symbol="${stock.symbol}">
-          <div class="sym-main">
-            <span class="sym-symbol">${stock.symbol}</span>
-            <span class="sym-name">${stock.name}</span>
-          </div>
-          <div style="text-align:right;">
-            <span class="sym-price">$${stock.basePrice.toFixed(2)}</span>
-            <span class="${isPositive ? 'positive' : 'negative'}" style="font-size:0.75rem; display:block;">
-              ${isPositive ? '+' : ''}${priceChange}%
-            </span>
-          </div>
-        </div>
-      `;
-    });
-    
-    dropdown.innerHTML = html;
-    dropdown.classList.add('active');
-  }
-  
-  function filterSuggestions(query, dropdown) {
-    const matchingStocks = stockDatabase.filter(stock => 
-      stock.symbol.startsWith(query)
-    );
-    
-    if (matchingStocks.length === 0) {
-      dropdown.innerHTML = `
-        <div class="dropdown-header">🔍 Search Results for "${query}"</div>
-        <div class="no-results">
-          <i class="fas fa-search" style="font-size:1.5rem; display:block; margin-bottom:0.5rem;"></i>
-          No stocks found starting with "${query}"<br>
-          <span style="font-size:0.75rem;">Try different letters</span>
-        </div>
-      `;
-    } else {
-      let html = `<div class="dropdown-header">🔍 Stocks starting with "${query}" (${matchingStocks.length} found)</div>`;
-      
-      matchingStocks.forEach(stock => {
-        const priceChange = (Math.random() * 4 - 2).toFixed(2);
-        const isPositive = parseFloat(priceChange) >= 0;
-        
-        const highlightedSym = stock.symbol.replace(
-          new RegExp(`^(${query})`, 'i'),
-          '<span style="background:#fff3cd; padding:0.1rem 0.3rem; border-radius:0.3rem;">\$1</span>'
-        );
-        
-        html += `
-          <div class="suggestion-item" data-symbol="\${stock.symbol}">
-            <div class="sym-main">
-              <span class="sym-symbol">${highlightedSym}</span>
-              <span class="sym-name">${stock.name} · <span class="sym-sector">${stock.sector}</span></span>
-            </div>
-            <div style="text-align:right;">
-              <span class="sym-price">$${stock.basePrice.toFixed(2)}</span>
-              <span class="${isPositive ? 'positive' : 'negative'}" style="font-size:0.75rem; display:block;">
-                ${isPositive ? '+' : ''}${priceChange}%
-              </span>
-            </div>
-          </div>
-        `;
       });
-      
-      dropdown.innerHTML = html;
-    }
-    
-    dropdown.classList.add('active');
+    });
   }
 
-  // ---------- RENDERERS ----------
+  // ============================================
+  // RENDER FUNCTIONS
+  // ============================================
   function renderOverview() {
     const topGainers = getTopGainers(5);
     const topLosers = getTopLosers(5);
@@ -394,8 +505,8 @@
       asks.push({ price: (info.basePrice + 0.2*i + Math.random()*0.45).toFixed(2), volume: Math.floor(Math.random()*800+130) });
     }
     return `
-      <div class="inline-search">
-        <input type="text" id="depthSymbolInput" placeholder="Symbol" value="${symbol}">
+      <div class="inline-search" style="position: relative;">
+        <input type="text" id="depthSymbolInput" placeholder="Search by symbol or name..." value="${symbol}" autocomplete="off">
         <button id="depthSearchBtn"><i class="fas fa-search"></i> Load</button>
       </div>
       <div class="grid-2col">
@@ -425,8 +536,8 @@
       </div>`;
     }).join('');
     return `
-      <div class="inline-search">
-        <input type="text" id="techSymbolFilter" placeholder="Filter symbol..." value="${filterSymbol}">
+      <div class="inline-search" style="position: relative;">
+        <input type="text" id="techSymbolFilter" placeholder="Filter by symbol or name..." value="${filterSymbol}" autocomplete="off">
         <button id="techFilterBtn"><i class="fas fa-filter"></i> Apply</button>
       </div>
       <div class="card-title"><i class="fas fa-chart-simple"></i> Technical Screener</div>
@@ -440,8 +551,8 @@
   function renderFundamental(symbol = currentSymbol) {
     const info = getStockInfo(symbol);
     return `
-      <div class="inline-search">
-        <input type="text" id="fundSymbolInput" placeholder="Symbol" value="${symbol}">
+      <div class="inline-search" style="position: relative;">
+        <input type="text" id="fundSymbolInput" placeholder="Search by symbol or name..." value="${symbol}" autocomplete="off">
         <button id="fundSearchBtn"><i class="fas fa-search"></i> Load</button>
       </div>
       <div class="card-title"><i class="fas fa-coins"></i> Fundamental Analysis · ${symbol}</div>
@@ -450,6 +561,8 @@
         <div><strong>Country:</strong> ${info.country}</div>
         <div><strong>Sector:</strong> ${info.sector}</div>
         <div><strong>Base Price:</strong> $${info.basePrice.toFixed(2)}</div>
+        <div><strong>Company:</strong> ${info.name}</div>
+        <div><strong>Symbol:</strong> ${info.symbol}</div>
       </div>
     `;
   }
@@ -467,8 +580,8 @@
       });
     }
     return `
-      <div class="inline-search">
-        <input type="text" id="floorSymbolInput" placeholder="Symbol" value="${symbol}">
+      <div class="inline-search" style="position: relative;">
+        <input type="text" id="floorSymbolInput" placeholder="Search by symbol or name..." value="${symbol}" autocomplete="off">
         <button id="floorSearchBtn"><i class="fas fa-search"></i> Load</button>
       </div>
       <div class="card-title"><i class="fas fa-receipt"></i> Floorsheet · ${symbol}</div>
@@ -489,8 +602,8 @@
     const prices = generatePriceSeries(symbol, 40);
     const last = prices[prices.length-1].price;
     return `
-      <div class="inline-search">
-        <input type="text" id="forecastSymbolInput" placeholder="Symbol" value="${symbol}">
+      <div class="inline-search" style="position: relative;">
+        <input type="text" id="forecastSymbolInput" placeholder="Search by symbol or name..." value="${symbol}" autocomplete="off">
         <button id="forecastSearchBtn"><i class="fas fa-search"></i> Load</button>
       </div>
       <div class="grid-2col">
@@ -510,8 +623,8 @@
     const info = getStockInfo(symbol);
     const sentimentScore = (ind.rsi/100*0.4 + (ind.macd>0?0.3:0) + (ind.current>ind.sma20?0.3:0))*100;
     return `
-      <div class="inline-search">
-        <input type="text" id="aiSymbolInput" placeholder="Symbol" value="${symbol}">
+      <div class="inline-search" style="position: relative;">
+        <input type="text" id="aiSymbolInput" placeholder="Search by symbol or name..." value="${symbol}" autocomplete="off">
         <button id="aiSearchBtn"><i class="fas fa-search"></i> Load</button>
       </div>
       <div class="ai-box">
@@ -551,8 +664,10 @@
     }
     container.innerHTML = html;
     attachTabEvents(tabId);
-    if (tabId === 'overview') setTimeout(drawOverviewMiniChart, 40);
-    if (tabId === 'forecast') setTimeout(drawForecastChart, 50);
+    // Setup autocomplete for tab search bars
+    setTimeout(setupTabAutocomplete, 100);
+    if (tabId === 'overview') setTimeout(drawOverviewMiniChart, 150);
+    if (tabId === 'forecast') setTimeout(drawForecastChart, 150);
   }
 
   function attachTabEvents(tabId) {
@@ -576,6 +691,7 @@
         const container = document.getElementById('tabContent');
         container.innerHTML = renderTechnicalScreener(filter);
         attachTabEvents('technicals');
+        setTimeout(setupTabAutocomplete, 100);
       });
     }
   }
@@ -617,17 +733,17 @@
     });
   }
 
-  // Global modal functions - FIXED: Separate gainers/losers
+  // Global modal functions
   window.showAllGainers = function() {
     const allData = getAllMarketData();
     const gainers = allData.filter(s => s.change > 0).sort((a,b) => b.change - a.change);
-    showModal('📈 All Gainers (Positive Changes)', gainers, ['Symbol', 'Name', 'Price', 'Change%']);
+    showModal('📈 All Gainers', gainers, ['Symbol', 'Name', 'Price', 'Change%']);
   };
   
   window.showAllLosers = function() {
     const allData = getAllMarketData();
     const losers = allData.filter(s => s.change < 0).sort((a,b) => a.change - b.change);
-    showModal('📉 All Losers (Negative Changes)', losers, ['Symbol', 'Name', 'Price', 'Change%']);
+    showModal('📉 All Losers', losers, ['Symbol', 'Name', 'Price', 'Change%']);
   };
   
   window.showAllTurnover = function() {
@@ -645,12 +761,23 @@
     showModal('💱 All Stocks by Transactions', allData, ['Symbol', 'Name', 'Transactions', 'Volume']);
   };
 
-  // Global search
+  // Global search button
   document.getElementById('globalAnalyzeBtn').addEventListener('click', ()=>{
     const val = document.getElementById('globalSymbolInput').value.trim().toUpperCase();
     if (val) {
-      currentSymbol = val;
-      switchTab(activeTab);
+      const match = stockDatabase.find(s => s.symbol === val);
+      if (match) {
+        currentSymbol = val;
+        switchTab(activeTab);
+      } else {
+        // Try to find by name
+        const nameMatch = stockDatabase.find(s => s.name.toUpperCase().includes(val));
+        if (nameMatch) {
+          currentSymbol = nameMatch.symbol;
+          document.getElementById('globalSymbolInput').value = nameMatch.symbol;
+          switchTab(activeTab);
+        }
+      }
     }
   });
 
@@ -660,13 +787,9 @@
 
   // Initialize
   window.addEventListener('load', ()=>{
-    setupAutocomplete();
+    initializeAllAutocomplete();
     switchTab('overview');
     renderMarketOverview();
-    // Refresh market overview every 30 seconds
     setInterval(renderMarketOverview, 30000);
   });
 })();
-window.addEventListener('load', () => {
-    renderMarketOverview();
-});
