@@ -1,4 +1,5 @@
 let stockDatabase = [];
+// Added a trailing slash or double checking the protocol
 const RENDER_URL = 'https://dreamstock-backend.onrender.com/stocks/market-watch';
 
 async function updateMarketData() {
@@ -8,19 +9,31 @@ async function updateMarketData() {
     }
 
     try {
-        const response = await fetch(RENDER_URL);
-        if (!response.ok) throw new Error('Network response was not ok');
+        // Adding a timestamp ensures the "Host" is re-validated every time
+        const response = await fetch(`${RENDER_URL}?t=${new Date().getTime()}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         
         const result = await response.json();
-        stockDatabase = result.data;
         
-        console.log("Successfully loaded 40 scripts from Render.");
-        displayStocks(); 
+        // Safety check: ensure result.data exists before assigning
+        if (result && result.data) {
+            stockDatabase = result.data;
+            console.log("Successfully loaded scripts from Render.");
+            displayStocks();
+        } else {
+            throw new Error("Data format is incorrect");
+        }
 
     } catch (error) {
-        console.error("Backend Error:", error);
+        console.error("Connection Error:", error.message);
         if (container) {
-            container.innerHTML = `<p style="color: #ff4d4d; text-align:center;">Failed to load data. Please refresh in a minute.</p>`;
+            container.innerHTML = `<p style="color: #ff4d4d; text-align:center;">
+                Connection failed. <br>
+                <small>Error: ${error.message}</small>
+            </p>`;
         }
     }
 }
@@ -29,8 +42,8 @@ function displayStocks() {
     const container = document.getElementById('stock-list');
     if (!container) return;
 
-    if (stockDatabase.length === 0) {
-        container.innerHTML = "<p>No data available.</p>";
+    if (!stockDatabase || stockDatabase.length === 0) {
+        container.innerHTML = "<p style='text-align:center;'>No stock data found.</p>";
         return;
     }
 
