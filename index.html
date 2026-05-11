@@ -1,73 +1,25 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
-  <title>MarketPulse Pro • Ultimate Stock Analysis Suite</title>
-  
-  <!-- External CSS -->
-  <link rel="stylesheet" href="style.css">
-  
-  <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-</head>
-<body>
-<div class="platform">
-  <header class="glass">
-    <div class="logo">
-      <i class="fas fa-chart-line"></i>
-      <h1>Market<span>Pulse Pro</span></h1>
-    </div>
-    <div class="search-wrapper" id="searchWrapper">
-      <div class="global-search">
-        <input type="text" id="globalSymbolInput" placeholder="Type to search stocks..." value="" autocomplete="off">
-        <button id="globalAnalyzeBtn"><i class="fas fa-search"></i> Analyze</button>
-      </div>
-      <div class="suggestions-dropdown" id="suggestionsDropdown"></div>
-    </div>
-  </header>
+<!-- Inside your <body> -->
+<div id="stock-list" class="stock-grid"></div>
 
-  <div class="tab-bar" id="tabBar">
-    <button class="tab active" data-tab="overview">🏠 Overview</button>
-    <button class="tab" data-tab="charts">📊 Charts</button>
-    <button class="tab" data-tab="compare">⚖️ Compare</button>
-    <button class="tab" data-tab="screener">🔎 Screener</button>
-    <button class="tab" data-tab="marketdepth">📋 Depth</button>
-    <button class="tab" data-tab="fundamental">💰 Fundamental</button>
-    <button class="tab" data-tab="floorsheet">🧾 Floorsheet</button>
-    <button class="tab" data-tab="forecast">🔮 Forecast</button>
-    <button class="tab" data-tab="ai">🤖 AI</button>
-  </div>
-
-  <div id="tabContent" class="glass" style="min-height: 520px;"></div>
-  
-  <!-- Market Overview Section -->
-  <section class="stock-container glass" style="margin-top: 1.5rem;">
-    <h2 style="margin-bottom: 1rem; color: #1a2740;">
-      <i class="fas fa-globe"></i> Market Overview
-    </h2>
-    <div id="stock-list">
-      <p style="text-align: center; padding: 2rem; color: #6b7a99;">
-        <i class="fas fa-spinner fa-spin"></i> Loading stocks...
-      </p>
-    </div>
-  </section>
-  
-  <!-- Modal for expanded lists -->
-  <div class="modal-overlay" id="modalOverlay">
-    <div class="modal-content" id="modalContent"></div>
-  </div>
-
-  <div style="text-align: center; font-size: 0.7rem; color: #6b7a99; padding: 0.3rem;">
-    ⚡ Real-time simulated data · Advanced analytics · Not financial advice
-  </div>
-</div>
-
-<!-- JavaScript files (order matters!) -->
-<script src="stocks.js"></script>
-<script src="main.js"></script>
-</body>
-</html>
+<!-- Add these styles to your style.css -->
+<style>
+    .stock-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 20px;
+        padding: 20px;
+    }
+    .stock-card {
+        background: #1e1e1e;
+        border: 1px solid #333;
+        border-radius: 12px;
+        padding: 15px;
+        text-align: center;
+        transition: transform 0.2s;
+    }
+    .stock-card:hover { transform: translateY(-5px); }
+    .status-tag { margin-top: 10px; padding: 5px; border-radius: 5px; font-weight: bold; }
+    .Overbought { background: #ff4d4d33; color: #ff4d4d; }
+    .Oversold { background: #40ff0033; color: #40ff00; }
+    .Neutral { background: #ffffff11; color: #aaa; }
+</style>
