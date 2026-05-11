@@ -1,5 +1,5 @@
 // Comprehensive Stock Database Array (International Markets)
-const stockDatabase = [
+const stockDatabase =[
   // ========== US TECHNOLOGY STOCKS ==========
   { symbol: "AAPL", name: "Apple Inc.", sector: "Technology", exchange: "NASDAQ", country: "US", basePrice: 187.50 },
   { symbol: "MSFT", name: "Microsoft Corporation", sector: "Technology", exchange: "NASDAQ", country: "US", basePrice: 378.90 },
