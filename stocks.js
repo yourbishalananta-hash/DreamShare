@@ -6,7 +6,7 @@ async function updateMarketData() {
     const API_URL = 'http://127.0.0.1:8000/stocks/market-watch';
 
     try {
-        const response = await fetch(API_URL);
+        const response = await fetch('https://dreamstock-backend.onrender.com/stocks/market-watch');
         const result = await response.json();
         
         // Overwrite the database with fresh data from Python
