@@ -1,3 +1,9 @@
+/* ============================================
+   MARKETPULSE PRO - UNIFIED STYLESHEET
+   Clean, consistent design language
+   ============================================ */
+
+/* === CSS Reset & Base Styles === */
 * {
   margin: 0;
   padding: 0;
@@ -13,45 +19,46 @@ body {
   min-height: 100vh;
 }
 
+/* === Main Platform Container === */
 .platform {
   max-width: 1500px;
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 1.4rem;
+  gap: 1.5rem;
 }
 
+/* === Glass Morphism Panel === */
 .glass {
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(22px);
-  -webkit-backdrop-filter: blur(22px);
-  border-radius: 2rem;
-  box-shadow: 0 25px 50px rgba(0, 20, 40, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  padding: 1.6rem;
-  transition: all 0.2s;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 1.8rem;
+  box-shadow: 0 20px 40px rgba(0, 20, 40, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  padding: 1.8rem;
 }
 
-/* Header Styles */
+/* === Header === */
 header {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .logo {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
+  gap: 0.8rem;
 }
 
 .logo i {
   font-size: 2.5rem;
   color: #0a2540;
-  background: rgba(10, 37, 64, 0.08);
-  padding: 0.5rem;
+  background: linear-gradient(135deg, rgba(10, 37, 64, 0.08), rgba(45, 106, 159, 0.08));
+  padding: 0.6rem;
   border-radius: 1.2rem;
 }
 
@@ -67,7 +74,7 @@ header {
   font-weight: 600;
 }
 
-/* Search Styles */
+/* === Search Bar === */
 .search-wrapper {
   position: relative;
   z-index: 1000;
@@ -79,9 +86,8 @@ header {
   background: white;
   padding: 0.4rem 0.4rem 0.4rem 1.5rem;
   border-radius: 3rem;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
-  position: relative;
-  z-index: 1001;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 .global-search input {
@@ -91,10 +97,11 @@ header {
   width: 220px;
   font-weight: 500;
   background: transparent;
+  color: #0a1f38;
 }
 
-.global-search input:focus {
-  box-shadow: none;
+.global-search input::placeholder {
+  color: #8a9bb5;
 }
 
 .global-search button {
@@ -105,7 +112,7 @@ header {
   border-radius: 2.5rem;
   font-weight: 600;
   cursor: pointer;
-  transition: 0.2s;
+  transition: all 0.2s;
   white-space: nowrap;
 }
 
@@ -115,14 +122,14 @@ header {
   box-shadow: 0 4px 12px rgba(10, 37, 64, 0.3);
 }
 
-/* Suggestions Dropdown */
+/* === Suggestions Dropdown === */
 .suggestions-dropdown {
   position: absolute;
   top: 65px;
   left: 0;
   background: white;
   border-radius: 1.5rem;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
   width: 350px;
   max-height: 320px;
   overflow-y: auto;
@@ -137,14 +144,8 @@ header {
 }
 
 @keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .suggestions-dropdown .dropdown-header {
@@ -158,12 +159,12 @@ header {
   border-bottom: 1px solid #e8edf5;
   position: sticky;
   top: 0;
+  z-index: 1;
 }
 
 .suggestion-item {
   padding: 0.8rem 1.2rem;
   cursor: pointer;
-  font-weight: 500;
   border-bottom: 1px solid #f0f4f8;
   transition: all 0.15s;
   display: flex;
@@ -180,30 +181,30 @@ header {
   padding-left: 1.5rem;
 }
 
-.suggestion-item .sym-main {
+.sym-main {
   display: flex;
   flex-direction: column;
 }
 
-.suggestion-item .sym-symbol {
+.sym-symbol {
   font-weight: 700;
   color: #0a1f38;
   font-size: 0.95rem;
 }
 
-.suggestion-item .sym-name {
+.sym-name {
   color: #6b7a99;
   font-size: 0.8rem;
   margin-top: 0.1rem;
 }
 
-.suggestion-item .sym-price {
+.sym-price {
   font-weight: 600;
   color: #2d6a9f;
   font-size: 0.9rem;
 }
 
-.suggestion-item .sym-sector {
+.sym-sector {
   font-size: 0.7rem;
   color: #8a9bb5;
   background: #f0f4fc;
@@ -212,18 +213,18 @@ header {
 }
 
 .no-results {
-  padding: 1.5rem;
+  padding: 2rem 1.5rem;
   text-align: center;
   color: #8a9bb5;
   font-weight: 500;
 }
 
-/* Tab Navigation */
+/* === Tab Navigation === */
 .tab-bar {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin: 0.4rem 0 0.2rem;
+  margin: 0.5rem 0;
 }
 
 .tab {
@@ -246,10 +247,15 @@ header {
 .tab.active {
   background: #0a2540;
   color: white;
-  box-shadow: 0 10px 18px rgba(10, 37, 64, 0.3);
+  box-shadow: 0 8px 16px rgba(10, 37, 64, 0.3);
 }
 
-/* Grid Layouts */
+/* === Content Area === */
+#tabContent {
+  min-height: 500px;
+}
+
+/* === Grid Layouts === */
 .grid-2col {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -262,21 +268,14 @@ header {
   gap: 1.5rem;
 }
 
-.grid-4col {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1.2rem;
-}
-
 @media (max-width: 1000px) {
   .grid-2col,
-  .grid-3col,
-  .grid-4col {
+  .grid-3col {
     grid-template-columns: 1fr;
   }
 }
 
-/* Card Titles */
+/* === Card Titles === */
 .card-title {
   font-weight: 700;
   margin-bottom: 0.9rem;
@@ -287,71 +286,68 @@ header {
   color: #1a2740;
 }
 
-/* Colors for positive/negative values */
-.positive {
-  color: #0f7b4e;
-  font-weight: 600;
-}
+/* === Colors === */
+.positive { color: #0f7b4e; font-weight: 600; }
+.negative { color: #c4384a; font-weight: 600; }
 
-.negative {
-  color: #c4384a;
-  font-weight: 600;
-}
-
-/* List Rows */
+/* === List Rows === */
 .list-row {
   display: flex;
   justify-content: space-between;
-  padding: 0.5rem 0;
+  padding: 0.55rem 0.5rem;
   border-bottom: 1px solid rgba(0, 0, 0, 0.04);
   font-size: 0.9rem;
   align-items: center;
   transition: background 0.15s;
+  border-radius: 0.3rem;
 }
 
 .list-row:hover {
-  background: rgba(248, 250, 253, 0.5);
+  background: rgba(248, 250, 253, 0.6);
 }
 
 .list-row.header-row {
   font-weight: 700;
   background: #f8fafd;
-  padding: 0.5rem;
+  padding: 0.6rem 0.5rem;
   border-radius: 0.5rem;
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 2px solid #e0e7f5;
 }
 
-/* News Items */
+/* === News Items === */
 .news-item {
-  padding: 0.55rem 0;
+  padding: 0.6rem 0;
   border-bottom: 1px dashed #dce3ef;
   font-size: 0.9rem;
   display: flex;
   gap: 0.5rem;
   align-items: baseline;
+  color: #2e3b58;
 }
 
-.news-item:hover {
-  background: rgba(248, 250, 253, 0.3);
+.news-item:last-child {
+  border-bottom: none;
 }
 
-/* Market Depth & Floorsheet Rows */
+/* === Market Depth & Floorsheet === */
 .depth-row,
 .floorsheet-row {
   display: flex;
   justify-content: space-between;
-  padding: 0.4rem 0;
+  padding: 0.5rem 0.3rem;
   border-bottom: 1px solid rgba(0, 0, 0, 0.04);
   font-size: 0.9rem;
   transition: background 0.15s;
+  border-radius: 0.3rem;
 }
 
 .depth-row:hover,
 .floorsheet-row:hover {
-  background: rgba(248, 250, 253, 0.3);
+  background: rgba(248, 250, 253, 0.4);
 }
 
-/* Badges */
+/* === Badges === */
 .badge {
   background: #e0e7f5;
   padding: 0.25rem 0.9rem;
@@ -361,19 +357,21 @@ header {
   color: #2d6a9f;
 }
 
-/* See More Button */
+/* === Buttons === */
 .see-more-btn {
   background: transparent;
-  border: 1px solid #dce3ef;
-  padding: 0.4rem 1rem;
+  border: 1px solid #d0d8e8;
+  padding: 0.5rem 1.2rem;
   border-radius: 1.5rem;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: #2d6a9f;
   cursor: pointer;
   margin-top: 0.5rem;
   transition: all 0.2s;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 .see-more-btn:hover {
@@ -382,33 +380,35 @@ header {
   transform: translateY(-1px);
 }
 
-/* Charts */
+/* === Charts === */
 canvas {
   width: 100%;
   height: auto;
   max-height: 240px;
 }
 
-/* AI Analysis Box */
+/* === AI Analysis Box === */
 .ai-box {
-  background: linear-gradient(120deg, #eef4ff, #ffffff);
+  background: linear-gradient(135deg, #eef4ff, #ffffff);
   border-radius: 1.3rem;
-  padding: 1.2rem;
+  padding: 1.5rem;
   border: 1px solid rgba(45, 106, 159, 0.15);
   box-shadow: 0 4px 12px rgba(45, 106, 159, 0.05);
 }
 
 .ai-box h3 {
   color: #0a2540;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.8rem;
+  font-size: 1.1rem;
 }
 
 .ai-box p {
   margin-bottom: 0.5rem;
   line-height: 1.6;
+  color: #2e3b58;
 }
 
-/* Indicator Grid */
+/* === Indicator Grid === */
 .indicator-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -416,13 +416,14 @@ canvas {
 }
 
 .indicator-grid div {
-  padding: 0.5rem;
-  background: rgba(248, 250, 253, 0.5);
-  border-radius: 0.5rem;
+  padding: 0.6rem;
+  background: rgba(248, 250, 253, 0.6);
+  border-radius: 0.6rem;
   font-size: 0.9rem;
+  color: #2e3b58;
 }
 
-/* Broker Tags */
+/* === Broker Tags === */
 .broker-tag {
   background: #f0f4fc;
   padding: 0.2rem 0.6rem;
@@ -432,7 +433,7 @@ canvas {
   color: #2d6a9f;
 }
 
-/* Inline Search */
+/* === Inline Search (for tabs) === */
 .inline-search {
   display: flex;
   gap: 0.5rem;
@@ -444,10 +445,11 @@ canvas {
 .inline-search input {
   padding: 0.7rem 1.2rem;
   border-radius: 2rem;
-  border: 1px solid #dce3ef;
+  border: 1px solid #d0d8e8;
   background: white;
   width: 200px;
   font-weight: 500;
+  color: #0a1f38;
   transition: border-color 0.2s;
 }
 
@@ -473,7 +475,7 @@ canvas {
   transform: translateY(-1px);
 }
 
-/* Modal Styles */
+/* === Modal === */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -494,12 +496,8 @@ canvas {
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .modal-content {
@@ -515,14 +513,8 @@ canvas {
 }
 
 @keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .modal-close {
@@ -532,9 +524,14 @@ canvas {
   font-size: 1.5rem;
   cursor: pointer;
   color: #6b7a99;
-  transition: color 0.2s;
+  transition: all 0.2s;
   padding: 0.5rem;
   border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .modal-close:hover {
@@ -542,7 +539,9 @@ canvas {
   background: rgba(0, 0, 0, 0.05);
 }
 
-/* Stock Container & Market Overview */
+/* ============================================
+   MARKET OVERVIEW - Unified Stock Cards
+   ============================================ */
 .stock-container {
   margin-top: 0 !important;
 }
@@ -554,39 +553,42 @@ canvas {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  margin-bottom: 1rem;
 }
 
+/* The main grid for stock cards */
 .market-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1rem;
-  padding: 0.5rem 0;
 }
 
+/* Individual stock card - UNIFIED DESIGN */
 .stock-card {
   background: white;
-  border-radius: 1.2rem;
+  border-radius: 1rem;
   padding: 1.2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s;
-  border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  transition: all 0.25s ease;
   cursor: pointer;
 }
 
 .stock-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
   border-color: rgba(45, 106, 159, 0.2);
+  background: #fafbfd;
 }
 
 .stock-info h4 {
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 1rem;
   color: #0a1f38;
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.2rem;
 }
 
 .stock-info p {
@@ -601,17 +603,17 @@ canvas {
 
 .stock-price .price {
   font-weight: 700;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   color: #1a2740;
   margin-bottom: 0.2rem;
 }
 
 .stock-price .change {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
 }
 
-/* Scrollbar Styles */
+/* === Scrollbar === */
 .suggestions-dropdown::-webkit-scrollbar,
 .modal-content::-webkit-scrollbar {
   width: 6px;
@@ -629,36 +631,22 @@ canvas {
   border-radius: 10px;
 }
 
-/* Footer */
-.footer-note {
+/* === Footer === */
+.platform > div:last-child {
   text-align: center;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: #6b7a99;
-  padding: 0.3rem;
+  padding: 0.5rem;
 }
 
-/* Loading Animation */
-.fa-spinner {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Responsive Design */
+/* === Responsive === */
 @media (max-width: 768px) {
   body {
     padding: 0.5rem;
   }
 
   .glass {
-    padding: 1rem;
+    padding: 1.2rem;
     border-radius: 1.5rem;
   }
 
@@ -667,7 +655,7 @@ canvas {
   }
 
   .global-search input {
-    width: 150px;
+    width: 140px;
   }
 
   .suggestions-dropdown {
@@ -701,5 +689,10 @@ canvas {
   .global-search button {
     padding: 0.5rem 1rem;
     font-size: 0.85rem;
+  }
+
+  header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
