@@ -667,3 +667,6 @@
     setInterval(renderMarketOverview, 30000);
   });
 })();
+window.addEventListener('load', () => {
+    renderMarketOverview();
+});
