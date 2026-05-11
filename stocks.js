@@ -1,41 +1,54 @@
-// This array will now be populated automatically from your API
 let stockDatabase = [];
+const RENDER_URL = 'https://dreamstock-backend.onrender.com/stocks/market-watch';
 
 async function updateMarketData() {
-    // When you deploy, replace this with your Render URL
-    const API_URL = 'http://127.0.0.1:8000/stocks/market-watch';
+    const container = document.getElementById('stock-list');
+    if (container) {
+        container.innerHTML = '<p style="text-align:center; color: #aaa;">Wake up call sent to server... fetching live data (30-60s)...</p>';
+    }
 
     try {
-        const response = await fetch('https://dreamstock-backend.onrender.com/stocks/market-watch');
-        const result = await response.json();
+        const response = await fetch(RENDER_URL);
+        if (!response.ok) throw new Error('Network response was not ok');
         
-        // Overwrite the database with fresh data from Python
+        const result = await response.json();
         stockDatabase = result.data;
         
-        console.log("Successfully loaded 40 scripts.");
-        
-        // Call your UI render function here
+        console.log("Successfully loaded 40 scripts from Render.");
         displayStocks(); 
 
     } catch (error) {
-        console.error("Connection to Backend failed. Is main.py running?", error);
+        console.error("Backend Error:", error);
+        if (container) {
+            container.innerHTML = `<p style="color: #ff4d4d; text-align:center;">Failed to load data. Please refresh in a minute.</p>`;
+        }
     }
 }
 
-// Example function to show data on your page
 function displayStocks() {
-    const container = document.getElementById('stock-list'); // Ensure you have this ID in your HTML
+    const container = document.getElementById('stock-list');
     if (!container) return;
+
+    if (stockDatabase.length === 0) {
+        container.innerHTML = "<p>No data available.</p>";
+        return;
+    }
 
     container.innerHTML = stockDatabase.map(stock => `
         <div class="stock-card">
             <h3>${stock.symbol}</h3>
-            <p>Price: ₹${stock.price}</p>
-            <p>RSI: ${stock.rsi}</p>
-            <p class="${stock.status}">Signal: ${stock.status}</p>
+            <div class="price-row">
+                <span class="label">Price:</span>
+                <span class="value">₹${stock.price}</span>
+            </div>
+            <div class="rsi-row">
+                <span class="label">RSI (14):</span>
+                <span class="value">${stock.rsi}</span>
+            </div>
+            <div class="status-tag ${stock.status}">${stock.status}</div>
         </div>
     `).join('');
 }
 
-// Load data immediately
+// Auto-run on load
 updateMarketData();
