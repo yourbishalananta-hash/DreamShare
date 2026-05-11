@@ -72,8 +72,10 @@
       font-weight: 600;
     }
 
+    /* Enhanced Search Styles */
     .search-wrapper {
       position: relative;
+      z-index: 1000;
     }
     .global-search {
       display: flex;
@@ -82,14 +84,19 @@
       padding: 0.4rem 0.4rem 0.4rem 1.5rem;
       border-radius: 3rem;
       box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+      position: relative;
+      z-index: 1001;
     }
     .global-search input {
       border: none;
       outline: none;
       font-size: 1rem;
-      width: 200px;
+      width: 220px;
       font-weight: 500;
       background: transparent;
+    }
+    .global-search input:focus {
+      box-shadow: none;
     }
     .global-search button {
       background: #0a2540;
@@ -100,42 +107,109 @@
       font-weight: 600;
       cursor: pointer;
       transition: 0.2s;
+      white-space: nowrap;
     }
     .global-search button:hover {
       background: #1e3b5a;
     }
 
+    /* Suggestions Dropdown - Enhanced */
     .suggestions-dropdown {
       position: absolute;
-      top: 60px;
+      top: 65px;
       left: 0;
       background: white;
       border-radius: 1.5rem;
-      box-shadow: 0 15px 30px rgba(0,0,0,0.15);
-      width: 300px;
-      max-height: 250px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+      width: 350px;
+      max-height: 320px;
       overflow-y: auto;
       z-index: 999;
       display: none;
+      border: 1px solid #e0e7f5;
     }
     .suggestions-dropdown.active {
       display: block;
+    }
+    .suggestions-dropdown .dropdown-header {
+      padding: 0.8rem 1.2rem;
+      background: #f8fafd;
+      font-weight: 700;
+      font-size: 0.8rem;
+      color: #6b7a99;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid #e8edf5;
+      position: sticky;
+      top: 0;
     }
     .suggestion-item {
       padding: 0.8rem 1.2rem;
       cursor: pointer;
       font-weight: 500;
-      border-bottom: 1px solid #f0f0f0;
-      transition: background 0.15s;
+      border-bottom: 1px solid #f0f4f8;
+      transition: all 0.15s;
       display: flex;
       justify-content: space-between;
+      align-items: center;
+    }
+    .suggestion-item:last-child {
+      border-bottom: none;
     }
     .suggestion-item:hover {
       background: #f4f7fd;
+      padding-left: 1.5rem;
+    }
+    .suggestion-item .sym-main {
+      display: flex;
+      flex-direction: column;
+    }
+    .suggestion-item .sym-symbol {
+      font-weight: 700;
+      color: #0a1f38;
+      font-size: 0.95rem;
     }
     .suggestion-item .sym-name {
       color: #6b7a99;
       font-size: 0.8rem;
+      margin-top: 0.1rem;
+    }
+    .suggestion-item .sym-price {
+      font-weight: 600;
+      color: #2d6a9f;
+      font-size: 0.9rem;
+    }
+    .suggestion-item .sym-sector {
+      font-size: 0.7rem;
+      color: #8a9bb5;
+      background: #f0f4fc;
+      padding: 0.2rem 0.6rem;
+      border-radius: 0.8rem;
+    }
+    .no-results {
+      padding: 1.5rem;
+      text-align: center;
+      color: #8a9bb5;
+      font-weight: 500;
+    }
+    .searching-indicator {
+      padding: 0.8rem 1.2rem;
+      text-align: center;
+      color: #6b7a99;
+      font-size: 0.85rem;
+    }
+
+    /* Scrollbar styling for dropdown */
+    .suggestions-dropdown::-webkit-scrollbar {
+      width: 6px;
+    }
+    .suggestions-dropdown::-webkit-scrollbar-track {
+      background: #f8fafd;
+      border-radius: 10px;
+    }
+    .suggestions-dropdown::-webkit-scrollbar-thumb {
+      background: #d0d8e8;
+      border-radius: 10px;
     }
 
     .tab-bar {
@@ -338,7 +412,7 @@
     </div>
     <div class="search-wrapper" id="searchWrapper">
       <div class="global-search">
-        <input type="text" id="globalSymbolInput" placeholder="Search symbol..." value="AAPL" autocomplete="off">
+        <input type="text" id="globalSymbolInput" placeholder="Type to search stocks..." value="" autocomplete="off">
         <button id="globalAnalyzeBtn"><i class="fas fa-search"></i> Analyze</button>
       </div>
       <div class="suggestions-dropdown" id="suggestionsDropdown"></div>
@@ -385,7 +459,10 @@
       JNJ: { name: "Johnson & Johnson", base: 156.8, sector: "Healthcare", pe: 16.2, marketCap: "378B", dividend: 3.1, eps: 9.68, bookValue: 28.9, debtEquity: 0.72 },
       PG: { name: "Procter & Gamble", base: 162.4, sector: "Consumer Defensive", pe: 26.5, marketCap: "382B", dividend: 2.6, eps: 6.13, bookValue: 17.8, debtEquity: 0.68 },
       V: { name: "Visa Inc.", base: 278.3, sector: "Financial", pe: 32.8, marketCap: "570B", dividend: 0.8, eps: 8.48, bookValue: 19.2, debtEquity: 0.55 },
-      MA: { name: "Mastercard", base: 452.6, sector: "Financial", pe: 38.4, marketCap: "420B", dividend: 0.6, eps: 11.79, bookValue: 14.5, debtEquity: 0.92 }
+      MA: { name: "Mastercard", base: 452.6, sector: "Financial", pe: 38.4, marketCap: "420B", dividend: 0.6, eps: 11.79, bookValue: 14.5, debtEquity: 0.92 },
+      ABBV: { name: "AbbVie Inc.", base: 168.9, sector: "Healthcare", pe: 22.7, marketCap: "298B", dividend: 3.8, eps: 7.44, bookValue: 12.3, debtEquity: 2.1 },
+      AVGO: { name: "Broadcom Inc.", base: 1320.5, sector: "Technology", pe: 48.2, marketCap: "615B", dividend: 1.9, eps: 27.4, bookValue: 58.6, debtEquity: 1.2 },
+      ADBE: { name: "Adobe Inc.", base: 538.2, sector: "Technology", pe: 42.1, marketCap: "241B", dividend: 0, eps: 12.78, bookValue: 32.5, debtEquity: 0.35 }
     };
 
     const marketIndices = {
@@ -484,7 +561,6 @@
       data.forEach(item => {
         html += `<div class="list-row">`;
         columns.forEach(col => {
-          const key = col.toLowerCase().replace(/[^a-z]/g, '');
           if (col === 'Symbol') html += `<span><strong>${item.symbol}</strong></span>`;
           else if (col === 'Name') html += `<span style="color:#6b7a99;">${item.name}</span>`;
           else if (col === 'Price') html += `<span>$${item.price}</span>`;
@@ -504,31 +580,34 @@
       });
     }
 
-    // ---------- SUGGESTIONS / AUTOCOMPLETE ----------
+    // ---------- ENHANCED REAL-TIME SEARCH WITH SUGGESTIONS ----------
     function setupAutocomplete() {
       const input = document.getElementById('globalSymbolInput');
       const dropdown = document.getElementById('suggestionsDropdown');
+      const searchWrapper = document.getElementById('searchWrapper');
       
-      input.addEventListener('input', function() {
+      // Show initial suggestions when input is focused
+      input.addEventListener('focus', function() {
         const val = this.value.trim().toUpperCase();
         if (val.length === 0) {
-          dropdown.classList.remove('active');
-          return;
+          showAllSuggestions(dropdown);
+        } else {
+          filterSuggestions(val, dropdown);
         }
-        const matches = Object.entries(stockList).filter(([sym]) => sym.startsWith(val));
-        if (matches.length === 0) {
-          dropdown.classList.remove('active');
-          return;
-        }
-        dropdown.innerHTML = matches.map(([sym, info]) => 
-          `<div class="suggestion-item" data-symbol="${sym}">
-            <span><strong>${sym}</strong></span>
-            <span class="sym-name">${info.name} · $${info.base}</span>
-          </div>`
-        ).join('');
-        dropdown.classList.add('active');
       });
-
+      
+      // Real-time filtering as user types
+      input.addEventListener('input', function() {
+        const val = this.value.trim().toUpperCase();
+        
+        if (val.length === 0) {
+          showAllSuggestions(dropdown);
+        } else {
+          filterSuggestions(val, dropdown);
+        }
+      });
+      
+      // Handle click on suggestion item
       dropdown.addEventListener('click', function(e) {
         const item = e.target.closest('.suggestion-item');
         if (item) {
@@ -539,12 +618,112 @@
           switchTab(activeTab);
         }
       });
-
+      
+      // Close dropdown when clicking outside
       document.addEventListener('click', function(e) {
-        if (!document.getElementById('searchWrapper').contains(e.target)) {
+        if (!searchWrapper.contains(e.target)) {
           dropdown.classList.remove('active');
         }
       });
+      
+      // Handle keyboard navigation
+      input.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          dropdown.classList.remove('active');
+        }
+        if (e.key === 'Enter') {
+          const val = this.value.trim().toUpperCase();
+          if (val && stockList[val]) {
+            dropdown.classList.remove('active');
+            currentSymbol = val;
+            switchTab(activeTab);
+          }
+        }
+      });
+    }
+    
+    function showAllSuggestions(dropdown) {
+      const allStocks = Object.entries(stockList);
+      
+      if (allStocks.length === 0) {
+        dropdown.innerHTML = '<div class="no-results">No stocks available</div>';
+        dropdown.classList.add('active');
+        return;
+      }
+      
+      let html = '<div class="dropdown-header">📊 All Available Stocks (' + allStocks.length + ')</div>';
+      
+      allStocks.forEach(([sym, info]) => {
+        const priceChange = (Math.random() * 4 - 2).toFixed(2);
+        const isPositive = parseFloat(priceChange) >= 0;
+        
+        html += `
+          <div class="suggestion-item" data-symbol="${sym}">
+            <div class="sym-main">
+              <span class="sym-symbol">${sym}</span>
+              <span class="sym-name">${info.name}</span>
+            </div>
+            <div style="text-align:right;">
+              <span class="sym-price">$${info.base.toFixed(2)}</span>
+              <span class="${isPositive ? 'positive' : 'negative'}" style="font-size:0.75rem; display:block;">
+                ${isPositive ? '+' : ''}${priceChange}%
+              </span>
+            </div>
+          </div>
+        `;
+      });
+      
+      dropdown.innerHTML = html;
+      dropdown.classList.add('active');
+    }
+    
+    function filterSuggestions(query, dropdown) {
+      const matchingStocks = Object.entries(stockList).filter(([sym]) => 
+        sym.startsWith(query)
+      );
+      
+      if (matchingStocks.length === 0) {
+        dropdown.innerHTML = `
+          <div class="dropdown-header">🔍 Search Results for "${query}"</div>
+          <div class="no-results">
+            <i class="fas fa-search" style="font-size:1.5rem; display:block; margin-bottom:0.5rem;"></i>
+            No stocks found starting with "${query}"<br>
+            <span style="font-size:0.75rem;">Try different letters</span>
+          </div>
+        `;
+      } else {
+        let html = `<div class="dropdown-header">🔍 Stocks starting with "${query}" (${matchingStocks.length} found)</div>`;
+        
+        matchingStocks.forEach(([sym, info]) => {
+          const priceChange = (Math.random() * 4 - 2).toFixed(2);
+          const isPositive = parseFloat(priceChange) >= 0;
+          
+          // Highlight the matching part
+          const highlightedSym = sym.replace(
+            new RegExp(`^(${query})`, 'i'),
+            '<span style="background:#fff3cd; padding:0.1rem 0.3rem; border-radius:0.3rem;">\$1</span>'
+          );
+          
+          html += `
+            <div class="suggestion-item" data-symbol="\${sym}">
+              <div class="sym-main">
+                <span class="sym-symbol">${highlightedSym}</span>
+                <span class="sym-name">${info.name} · <span class="sym-sector">${info.sector}</span></span>
+              </div>
+              <div style="text-align:right;">
+                <span class="sym-price">$${info.base.toFixed(2)}</span>
+                <span class="${isPositive ? 'positive' : 'negative'}" style="font-size:0.75rem; display:block;">
+                  ${isPositive ? '+' : ''}${priceChange}%
+                </span>
+              </div>
+            </div>
+          `;
+        });
+        
+        dropdown.innerHTML = html;
+      }
+      
+      dropdown.classList.add('active');
     }
 
     // ---------- RENDERERS ----------
@@ -883,7 +1062,7 @@
       showModal('💱 All Transactions', allData, ['Symbol', 'Name', 'Transactions', 'Volume']);
     };
 
-    // Global search
+    // Global search button
     document.getElementById('globalAnalyzeBtn').addEventListener('click', ()=>{
       const val = document.getElementById('globalSymbolInput').value.trim().toUpperCase();
       if (val) {
