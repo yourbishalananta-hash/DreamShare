@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
   <title>MarketPulse Pro • Advanced Trading Platform</title>
   
-  <!-- CSS Files -->
-  <link rel="stylesheet" href="css/themes.css">
-  <link rel="stylesheet" href="css/components.css">
-  <link rel="stylesheet" href="css/style.css">
+  <!-- CSS Files (Ordered from General to Specific) -->
+  <link rel="stylesheet" href="themes.css">
+  <link rel="stylesheet" href="components.css">
+  <link rel="stylesheet" href="style.css">
   
   <!-- External Libraries -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -171,7 +171,7 @@
         <!-- Dynamic content loaded here -->
       </main>
 
-      <!-- Right Panel (Watchlist, Orders, etc.) -->
+      <!-- Right Panel -->
       <aside class="right-panel glass" id="rightPanel">
         <div class="panel-tabs">
           <button class="panel-tab active" data-panel="watchlist">Watchlist</button>
@@ -210,24 +210,26 @@
   <!-- Toast Notifications -->
   <div class="toast-container" id="toastContainer"></div>
 
-  <!-- JavaScript Files (Order matters!) -->
-  <script src="js/config.js"></script>
-  <script src="js/utils/formatters.js"></script>
-  <script src="js/utils/validators.js"></script>
-  <script src="js/utils/indicators.js"></script>
-  <script src="js/core/eventBus.js"></script>
-  <script src="js/core/stateManager.js"></script>
-  <script src="js/core/router.js"></script>
-  <script src="js/data/stockDatabase.js"></script>
-  <script src="js/data/marketData.js"></script>
-  <script src="js/api/apiService.js"></script>
-  <script src="js/api/websocket.js"></script>
-  <script src="js/components/charts.js"></script>
-  <script src="js/components/screener.js"></script>
-  <script src="js/components/watchlist.js"></script>
-  <script src="js/components/portfolio.js"></script>
-  <script src="js/components/alerts.js"></script>
-  <script src="js/components/news.js"></script>
-  <script src="js/app.js"></script>
+  <!-- 
+    JAVASCRIPT LOADING ORDER 
+    Crucial: Core dependencies must load before the Main Application (app.js)
+  -->
+  
+  <!-- 1. Configuration -->
+  <script src="config.js"></script>
+  
+  <!-- 2. Core Systems (State & Events) -->
+  <script src="coreeventBus.js"></script>
+  <script src="corestateManager.js"></script>
+  
+  <!-- 3. Data & Communication -->
+  <script src="apiService.js"></script>
+  <script src="websocket.js"></script>
+  
+  <!-- 4. UI Components -->
+  <script src="components.js"></script>
+  
+  <!-- 5. Main Application Logic -->
+  <script src="app.js"></script>
 </body>
 </html>
