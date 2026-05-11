@@ -36,3 +36,59 @@
     color: #666;
     margin: 8px 0;
 }
+/* Stock Container Styles */
+.stock-container h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #1a2740;
+}
+
+.market-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.stock-card {
+  background: white;
+  border-radius: 1rem;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stock-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+  cursor: pointer;
+}
+
+.stock-info h4 {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #0a1f38;
+  margin-bottom: 0.2rem;
+}
+
+.stock-info p {
+  font-size: 0.8rem;
+  color: #6b7a99;
+}
+
+.stock-price {
+  text-align: right;
+}
+
+.stock-price .price {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #1a2740;
+}
+
+.stock-price .change {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
