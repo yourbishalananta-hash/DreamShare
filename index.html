@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+  <title>MarketPulse Pro • Ultimate Stock Analysis</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    }
+
+    body {
+      background: #f0f3f9;
+      padding: 1.2rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    .platform {
+      max-width: 1450px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .glass {
+      background: rgba(255,255,255,0.78);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 2rem;
+      box-shadow: 0 20px 40px rgba(0,20,40,0.08);
+      border: 1px solid rgba(255,255,255,0.75);
+      padding: 1.6rem;
+    }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+    }
+    .logo i {
+      font-size: 2.4rem;
+      color: #0a2540;
+      background: rgba(10,37,64,0.07);
+      padding: 0.5rem;
+      border-radius: 1.2rem;
+    }
+    .logo h1 {
+      font-weight: 700;
+      font-size: 1.9rem;
+      color: #0a1f38;
+    }
+    .logo span {
+      color: #2d6a9f;
+    }
+
+    .global-search {
+      display: flex;
+      gap: 0.5rem;
+      background: white;
+      padding: 0.4rem 0.4rem 0.4rem 1.5rem;
+      border-radius: 3rem;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.04);
+    }
+    .global-search input {
+      border: none;
+      outline: none;
+      font-size: 1rem;
+      width: 170px;
+      font-weight: 500;
+    }
+    .global-search button {
+      background: #0a2540;
+      border: none;
+      color: white;
+      padding: 0.7rem 1.5rem;
+      border-radius: 2.5rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .tab-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin: 0.3rem 0 0.2rem;
+    }
+    .tab {
+      background: #e9eef6;
+      padding: 0.6rem 1.2rem;
+      border-radius: 2rem;
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: #2e3b58;
+      cursor: pointer;
+      border: none;
+      transition: 0.2s;
+    }
+    .tab.active {
+      background: #0a2540;
+      color: white;
+      box-shadow: 0 8px 16px rgba(10,37,64,0.25);
+    }
+
+    .inline-search {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.2rem;
+      align-items: center;
+    }
+    .inline-search input {
+      padding: 0.6rem 1.2rem;
+      border-radius: 2rem;
+      border: 1px solid #dce3ef;
+      background: white;
+      width: 180px;
+      font-weight: 500;
+    }
+    .inline-search button {
+      background: #1e3b5a;
+      border: none;
+      color: white;
+      padding: 0.6rem 1.3rem;
+      border-radius: 2rem;
+      font-weight: 600;
+    }
+
+    .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .grid-3col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+    .grid-4col { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.2rem; }
+
+    @media (max-width: 950px) {
+      .grid-2col, .grid-3col, .grid-4col { grid-template-columns: 1fr; }
+    }
+
+    .card-title {
+      font-weight: 700;
+      margin-bottom: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .gainers span, .losers span { font-weight: 600; }
+    .positive { color: #0f7b4e; }
+    .negative { color: #c4384a; }
+
+    .list-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.45rem 0;
+      border-bottom: 1px solid rgba(0,0,0,0.04);
+      font-size: 0.9rem;
+    }
+
+    .news-item {
+      padding: 0.5rem 0;
+      border-bottom: 1px dashed #dce3ef;
+      font-size: 0.9rem;
+    }
+
+    .depth-row, .floorsheet-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.35rem 0;
+      border-bottom: 1px solid rgba(0,0,0,0.04);
+    }
+
+    .badge {
+      background: #e0e7f5;
+      padding: 0.2rem 0.9rem;
+      border-radius: 1rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+
+    canvas { width: 100%; height: auto; max-height: 220px; }
+
+    .ai-box {
+      background: linear-gradient(120deg, #eef4ff, #ffffff);
+      border-radius: 1.2rem;
+      padding: 1rem;
+    }
+  </style>
+</head>
+<body>
+<div class="platform">
+  <header class="glass">
+    <div class="logo">
+      <i class="fas fa-chart-line"></i>
+      <h1>Market<span>Pulse Pro</span></h1>
+    </div>
+    <div class="global-search">
+      <input type="text" id="globalSymbolInput" placeholder="AAPL, TSLA..." value="AAPL">
+      <button id="globalAnalyzeBtn"><i class="fas fa-search"></i> Analyze</button>
+    </div>
+  </header>
+
+  <div class="tab-bar" id="tabBar">
+    <button class="tab active" data-tab="overview">🏠 Overview</button>
+    <button class="tab" data-tab="marketdepth">📋 Market Depth</button>
+    <button class="tab" data-tab="technicals">📈 Technical Screener</button>
+    <button class="tab" data-tab="fundamental">💰 Fundamental</button>
+    <button class="tab" data-tab="floorsheet">🧾 Floorsheet</button>
+    <button class="tab" data-tab="forecast">🔮 Forecast</button>
+    <button class="tab" data-tab="ai">🤖 AI Analysis</button>
+  </div>
+
+  <div id="tabContent" class="glass" style="min-height: 500px;"></div>
+  <div style="text-align: center; font-size: 0.7rem; color: #6b7a99;">⚡ Real-time simulated data · Not financial advice</div>
+</div>
+
+<script>
+  (function() {
+    // ---------- STOCK DATABASE ----------
+    const stockList = {
+      AAPL: { name: "Apple Inc.", base: 187.5, sector: "Technology", pe: 29.4, marketCap: "2.85T", dividend: 0.92 },
+      TSLA: { name: "Tesla Inc.", base: 242.3, sector: "Auto", pe: 68.2, marketCap: "770B", dividend: 0 },
+      MSFT: { name: "Microsoft", base: 378.9, sector: "Technology", pe: 35.1, marketCap: "2.81T", dividend: 2.79 },
+      GOOGL: { name: "Alphabet", base: 141.2, sector: "Communication", pe: 25.8, marketCap: "1.76T", dividend: 0 },
+      AMZN: { name: "Amazon", base: 178.4, sector: "Consumer Cyclical", pe: 52.3, marketCap: "1.85T", dividend: 0 },
+      META: { name: "Meta Platforms", base: 485.6, sector: "Technology", pe: 27.9, marketCap: "1.22T", dividend: 0 },
+      NVDA: { name: "NVIDIA", base: 902.5, sector: "Technology", pe: 72.4, marketCap: "2.23T", dividend: 0.04 },
+      JPM: { name: "JPMorgan Chase", base: 198.4, sector: "Financial", pe: 12.1, marketCap: "570B", dividend: 4.2 }
+    };
+
+    let currentSymbol = "AAPL";
+    let activeTab = "overview";
+
+    function getStockInfo(sym) {
+      return stockList[sym] || { name: sym, base: 150 + Math.random()*200, sector: "General", pe: 20, marketCap: "N/A", dividend: 0 };
+    }
+
+    function generatePriceSeries(symbol, days = 50) {
+      const base = getStockInfo(symbol).base;
+      const vol = symbol === 'TSLA' ? 0.032 : 0.018;
+      let price = base - 3 + Math.random() * 6;
+      const res = [];
+      const now = new Date();
+      for (let i = days; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        price += (Math.random() - 0.48) * vol * price;
+        price = Math.max(price, base * 0.65);
+        res.push({ date: d.toISOString().slice(0,10), price: +price.toFixed(2) });
+      }
+      return res;
+    }
+
+    function computeIndicators(prices) {
+      const close = prices.map(p => p.price);
+      const current = close[close.length-1];
+      const sma20 = close.slice(-20).reduce((a,b)=>a+b,0)/20;
+      let rsi = 50;
+      if (close.length > 14) {
+        const changes = [];
+        for (let i=close.length-14; i<close.length; i++) changes.push(close[i]-close[i-1]);
+        const gains = changes.filter(c=>c>0).reduce((a,b)=>a+b,0)/14;
+        const losses = Math.abs(changes.filter(c=>c<0).reduce((a,b)=>a+b,0))/14;
+        if (losses !== 0) rsi = 100 - (100/(1+(gains/losses)));
+      }
+      return { current, sma20, rsi: +rsi.toFixed(1) };
+    }
+
+    // ----- MOCK MARKET DATA -----
+    function getTopGainersLosers() {
+      const symbols = Object.keys(stockList);
+      const data = symbols.map(s => {
+        const info = getStockInfo(s);
+        const change = (Math.random() * 8 - 3.5).toFixed(2);
+        return { symbol: s, price: (info.base * (0.97 + Math.random()*0.07)).toFixed(2), change: parseFloat(change) };
+      }).sort((a,b) => b.change - a.change);
+      return { gainers: data.slice(0,4), losers: data.slice(-4).reverse() };
+    }
+
+    function getNews() {
+      return [
+        "Fed signals cautious rate cuts amid inflation data",
+        "Tech earnings beat estimates, AI demand surges",
+        "Oil prices stabilize after geopolitical tensions",
+        "Retail sales show consumer resilience in Q2",
+        "Chip stocks rally on semiconductor bill optimism"
+      ];
+    }
+
+    function getTopTurnoverVolume() {
+      const syms = Object.keys(stockList).slice(0,5);
+      return syms.map(s => ({
+        symbol: s,
+        turnover: (Math.random()*900+200).toFixed(1) + 'M',
+        volume: (Math.random()*5+1).toFixed(2) + 'M',
+        transactions: Math.floor(Math.random()*15000+3000)
+      }));
+    }
+
+    // ---------- RENDERERS ----------
+    function renderOverview() {
+      const { gainers, losers } = getTopGainersLosers();
+      const news = getNews();
+      const topData = getTopTurnoverVolume();
+      const summarySymbols = ['AAPL','MSFT','NVDA','GOOGL'];
+      
+      let html = `
+        <div class="grid-2col" style="margin-bottom:1.5rem;">
+          <div>
+            <div class="card-title"><i class="fas fa-chart-line"></i> ${currentSymbol} · Quick Chart</div>
+            <canvas id="overviewMiniChart" height="160"></canvas>
+            <div style="margin-top:0.5rem;"><span class="badge">SMA20 $${computeIndicators(generatePriceSeries(currentSymbol,30)).sma20.toFixed(2)}</span></div>
+          </div>
+          <div>
+            <div class="card-title"><i class="fas fa-newspaper"></i> Market News</div>
+            ${news.map(n => `<div class="news-item"><i class="fas fa-circle" style="font-size:0.4rem; color:#2d6a9f;"></i> ${n}</div>`).join('')}
+          </div>
+        </div>
+        <div class="grid-3col">
+          <div>
+            <div class="card-title"><i class="fas fa-arrow-up positive"></i> Top Gainers</div>
+            ${gainers.map(g => `<div class="list-row"><span><strong>${g.symbol}</strong></span><span>$${g.price}</span><span class="positive">+${g.change}%</span></div>`).join('')}
+          </div>
+          <div>
+            <div class="card-title"><i class="fas fa-arrow-down negative"></i> Top Losers</div>
+            ${losers.map(l => `<div class="list-row"><span><strong>${l.symbol}</strong></span><span>$${l.price}</span><span class="negative">${l.change}%</span></div>`).join('')}
+          </div>
+          <div>
+            <div class="card-title"><i class="fas fa-fire"></i> Top Turnover</div>
+            ${topData.slice(0,4).map(t => `<div class="list-row"><span><strong>${t.symbol}</strong></span><span>${t.turnover}</span></div>`).join('')}
+          </div>
+        </div>
+        <div class="grid-3col" style="margin-top:1.2rem;">
+          <div>
+            <div class="card-title"><i class="fas fa-chart-bar"></i> Top Volume</div>
+            ${topData.map(t => `<div class="list-row"><span>${t.symbol}</span><span>${t.volume}</span></div>`).join('')}
+          </div>
+          <div>
+            <div class="card-title"><i class="fas fa-exchange-alt"></i> Top Transactions</div>
+            ${topData.map(t => `<div class="list-row"><span>${t.symbol}</span><span>${t.transactions} trades</span></div>`).join('')}
+          </div>
+          <div>
+            <div class="card-title"><i class="fas fa-globe"></i> Market Summary</div>
+            ${summarySymbols.map(s => {
+              const inf = getStockInfo(s);
+              const ch = (Math.random()*4-1.8).toFixed(2);
+              return `<div class="list-row"><span><strong>${s}</strong></span><span>$${inf.base.toFixed(2)}</span><span class="${ch>=0?'positive':'negative'}">${ch}%</span></div>`;
+            }).join('')}
+          </div>
+        </div>
+      `;
+      return html;
+    }
+
+    function renderMarketDepth(symbol = currentSymbol) {
+      const info = getStockInfo(symbol);
+      const bids = [], asks = [];
+      for (let i=0; i<6; i++) {
+        bids.push({ price: (info.base - 0.2*i - Math.random()*0.5).toFixed(2), volume: Math.floor(Math.random()*800+100) });
+        asks.push({ price: (info.base + 0.18*i + Math.random()*0.4).toFixed(2), volume: Math.floor(Math.random()*700+120) });
+      }
+      return `
+        <div class="inline-search">
+          <input type="text" id="depthSymbolInput" placeholder="Symbol" value="${symbol}">
+          <button id="depthSearchBtn"><i class="fas fa-search"></i> Load</button>
+        </div>
+        <div class="grid-2col">
+          <div><div class="card-title"><i class="fas fa-arrow-down positive"></i> Bid</div>
+            ${bids.map(b => `<div class="depth-row"><span class="positive">$${b.price}</span><span>${b.volume} sh</span></div>`).join('')}
+          </div>
+          <div><div class="card-title"><i class="fas fa-arrow-up negative"></i> Ask</div>
+            ${asks.map(a => `<div class="depth-row"><span class="negative">$${a.price}</span><span>${a.volume} sh</span></div>`).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderTechnicalScreener() {
+      const rows = Object.keys(stockList).map(s => {
+        const ind = computeIndicators(generatePriceSeries(s, 35));
+        const signal = ind.rsi > 65 ? 'Bearish' : ind.rsi < 35 ? 'Bullish' : 'Neutral';
+        return `<div class="list-row"><span><strong>${s}</strong></span><span>$${ind.current.toFixed(2)}</span><span>RSI ${ind.rsi}</span><span class="badge">${signal}</span></div>`;
+      }).join('');
+      return `<div class="card-title"><i class="fas fa-chart-simple"></i> Technical Screener</div>${rows}`;
+    }
+
+    function renderFundamental(symbol = currentSymbol) {
+      const info = getStockInfo(symbol);
+      return `
+        <div class="inline-search">
+          <input type="text" id="fundSymbolInput" placeholder="Symbol" value="${symbol}">
+          <button id="fundSearchBtn"><i class="fas fa-search"></i> Load</button>
+        </div>
+        <div class="grid-2col">
+          <div><strong>P/E:</strong> ${info.pe}</div><div><strong>EPS:</strong> $${(info.base/info.pe).toFixed(2)}</div>
+          <div><strong>Market Cap:</strong> ${info.marketCap}</div><div><strong>Dividend:</strong> ${info.dividend}%</div>
+          <div><strong>Book Value:</strong> $${(info.base*0.7).toFixed(2)}</div><div><strong>Debt/Equity:</strong> ${(0.4+Math.random()*0.7).toFixed(2)}</div>
+        </div>
+      `;
+    }
+
+    function renderFloorsheet(symbol = currentSymbol) {
+      const trans = [];
+      for (let i=0;i<8;i++) {
+        trans.push({
+          time: `${10+Math.floor(Math.random()*5)}:${Math.floor(Math.random()*60).toString().padStart(2,'0')}`,
+          price: (getStockInfo(symbol).base + (Math.random()-0.5)*2.8).toFixed(2),
+          volume: Math.floor(Math.random()*2000+100),
+          type: Math.random()>0.5 ? 'Buy' : 'Sell'
+        });
+      }
+      return `
+        <div class="inline-search">
+          <input type="text" id="floorSymbolInput" placeholder="Symbol" value="${symbol}">
+          <button id="floorSearchBtn"><i class="fas fa-search"></i> Load</button>
+        </div>
+        <div class="card-title"><i class="fas fa-receipt"></i> Floorsheet</div>
+        ${trans.map(t => `<div class="floorsheet-row"><span>${t.time}</span><span class="${t.type==='Buy'?'positive':'negative'}">$${t.price}</span><span>${t.volume}</span><span>${t.type}</span></div>`).join('')}
+      `;
+    }
+
+    function renderForecast(symbol = currentSymbol) {
+      const prices = generatePriceSeries(symbol, 40);
+      const last = prices[prices.length-1].price;
+      return `
+        <div class="inline-search">
+          <input type="text" id="forecastSymbolInput" placeholder="Symbol" value="${symbol}">
+          <button id="forecastSearchBtn"><i class="fas fa-search"></i> Load</button>
+        </div>
+        <div class="grid-2col">
+          <div><canvas id="forecastChart" height="180"></canvas></div>
+          <div><h3>30-Day Outlook</h3><p>High: $${(last*1.06).toFixed(2)}</p><p>Low: $${(last*0.94).toFixed(2)}</p></div>
+        </div>
+      `;
+    }
+
+    function renderAIAnalysis(symbol = currentSymbol) {
+      const ind = computeIndicators(generatePriceSeries(symbol, 50));
+      return `
+        <div class="inline-search">
+          <input type="text" id="aiSymbolInput" placeholder="Symbol" value="${symbol}">
+          <button id="aiSearchBtn"><i class="fas fa-search"></i> Load</button>
+        </div>
+        <div class="ai-box">
+          <h3><i class="fas fa-brain"></i> AI Analysis for ${symbol}</h3>
+          <p>Sentiment: ${ind.rsi>60?'Bullish':'Neutral'} | Support: $${(ind.current*0.96).toFixed(2)} | Resistance: $${(ind.current*1.05).toFixed(2)}</p>
+          <p>📌 ${ind.rsi>65?'Overbought – consider selling': ind.rsi<35?'Oversold – potential buy':'Hold / watch breakout'}</p>
+        </div>
+      `;
+    }
+
+    // Switch tab & render
+    function switchTab(tabId) {
+      activeTab = tabId;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelector(`.tab[data-tab="${tabId}"]`)?.classList.add('active');
+      const container = document.getElementById('tabContent');
+      let html = '';
+      switch(tabId) {
+        case 'overview': html = renderOverview(); break;
+        case 'marketdepth': html = renderMarketDepth(currentSymbol); break;
+        case 'technicals': html = renderTechnicalScreener(); break;
+        case 'fundamental': html = renderFundamental(currentSymbol); break;
+        case 'floorsheet': html = renderFloorsheet(currentSymbol); break;
+        case 'forecast': html = renderForecast(currentSymbol); break;
+        case 'ai': html = renderAIAnalysis(currentSymbol); break;
+        default: html = renderOverview();
+      }
+      container.innerHTML = html;
+      attachTabEvents(tabId);
+      if (tabId === 'overview') setTimeout(drawOverviewMiniChart, 40);
+      if (tabId === 'forecast') setTimeout(drawForecastChart, 50);
+    }
+
+    function attachTabEvents(tabId) {
+      if (tabId === 'marketdepth') {
+        document.getElementById('depthSearchBtn')?.addEventListener('click', ()=>{
+          const sym = document.getElementById('depthSymbolInput')?.value.trim().toUpperCase();
+          if (sym) { currentSymbol = sym; switchTab('marketdepth'); }
+        });
+      }
+      if (tabId === 'fundamental') {
+        document.getElementById('fundSearchBtn')?.addEventListener('click', ()=>{
+          const sym = document.getElementById('fundSymbolInput')?.value.trim().toUpperCase();
+          if (sym) { currentSymbol = sym; switchTab('fundamental'); }
+        });
+      }
+      if (tabId === 'floorsheet') {
+        document.getElementById('floorSearchBtn')?.addEventListener('click', ()=>{
+          const sym = document.getElementById('floorSymbolInput')?.value.trim().toUpperCase();
+          if (sym) { currentSymbol = sym; switchTab('floorsheet'); }
+        });
+      }
+      if (tabId === 'forecast') {
+        document.getElementById('forecastSearchBtn')?.addEventListener('click', ()=>{
+          const sym = document.getElementById('forecastSymbolInput')?.value.trim().toUpperCase();
+          if (sym) { currentSymbol = sym; switchTab('forecast'); }
+        });
+      }
+      if (tabId === 'ai') {
+        document.getElementById('aiSearchBtn')?.addEventListener('click', ()=>{
+          const sym = document.getElementById('aiSymbolInput')?.value.trim().toUpperCase();
+          if (sym) { currentSymbol = sym; switchTab('ai'); }
+        });
+      }
+    }
+
+    function drawOverviewMiniChart() {
+      const canvas = document.getElementById('overviewMiniChart');
+      if (!canvas) return;
+      const data = generatePriceSeries(currentSymbol, 35);
+      new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels: data.map(d=>d.date),
+          datasets: [{
+            data: data.map(d=>d.price),
+            borderColor: '#0a2540', backgroundColor: 'rgba(10,37,64,0.06)',
+            fill: true, tension: 0.2, pointRadius: 0
+          }]
+        },
+        options: { responsive: true, plugins:{legend:{display:false}}, scales:{x:{display:false},y:{display:false}} }
+      });
+    }
+
+    function drawForecastChart() {
+      const canvas = document.getElementById('forecastChart');
+      if (!canvas) return;
+      const hist = generatePriceSeries(currentSymbol, 25);
+      const last = hist[hist.length-1].price;
+      const future = [last, last*1.012, last*1.025, last*1.018, last*1.03];
+      new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels: ['D-2','D-1','Now','D+1','D+2'],
+          datasets: [{
+            data: [...hist.slice(-3).map(d=>d.price), ...future.slice(0,2)],
+            borderColor: '#2d6a9f', tension: 0.2
+          }]
+        },
+        options: { responsive: true, plugins:{legend:{display:false}} }
+      });
+    }
+
+    // Global search
+    document.getElementById('globalAnalyzeBtn').addEventListener('click', ()=>{
+      const val = document.getElementById('globalSymbolInput').value.trim().toUpperCase();
+      if (val) {
+        if (!stockList[val]) stockList[val] = { name: val, base: 150+Math.random()*200, sector:"General", pe:20, marketCap:"N/A", dividend:0 };
+        currentSymbol = val;
+        switchTab(activeTab);
+      }
+    });
+
+    document.getElementById('tabBar').addEventListener('click', (e)=>{
+      if (e.target.classList.contains('tab')) switchTab(e.target.dataset.tab);
+    });
+
+    window.addEventListener('load', ()=> switchTab('overview'));
+  })();
+</script>
+</body>
+</html>
