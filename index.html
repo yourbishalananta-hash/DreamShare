@@ -1,25 +1,780 @@
-<!-- Inside your <body> -->
-<div id="stock-list" class="stock-grid"></div>
-
-<!-- Add these styles to your style.css -->
-<style>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+  <title>MarketPulse Pro • Indian Stock Market Analysis</title>
+  
+  <!-- External CSS -->
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  
+  <style>
     .stock-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 20px;
-        padding: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 20px;
+      padding: 20px;
     }
     .stock-card {
-        background: #1e1e1e;
-        border: 1px solid #333;
-        border-radius: 12px;
-        padding: 15px;
-        text-align: center;
-        transition: transform 0.2s;
+      background: white;
+      border: 1px solid #e0e7f5;
+      border-radius: 12px;
+      padding: 15px;
+      text-align: center;
+      transition: transform 0.2s;
+      cursor: pointer;
     }
-    .stock-card:hover { transform: translateY(-5px); }
-    .status-tag { margin-top: 10px; padding: 5px; border-radius: 5px; font-weight: bold; }
+    .stock-card:hover { 
+      transform: translateY(-5px); 
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    }
+    .stock-card h3 {
+      color: #0a2540;
+      margin-bottom: 10px;
+    }
+    .price-row, .rsi-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 5px 0;
+      font-size: 0.9rem;
+    }
+    .label {
+      color: #6b7a99;
+    }
+    .value {
+      font-weight: 600;
+      color: #0a1f38;
+    }
+    .status-tag { 
+      margin-top: 10px; 
+      padding: 5px 10px; 
+      border-radius: 20px; 
+      font-weight: bold;
+      font-size: 0.8rem;
+      display: inline-block;
+    }
     .Overbought { background: #ff4d4d33; color: #ff4d4d; }
-    .Oversold { background: #40ff0033; color: #40ff00; }
-    .Neutral { background: #ffffff11; color: #aaa; }
-</style>
+    .Oversold { background: #40ff0033; color: #27ae60; }
+    .Neutral { background: #f0f4fc; color: #6b7a99; }
+    
+    .loading-text {
+      text-align: center;
+      padding: 2rem;
+      color: #6b7a99;
+    }
+    
+    .api-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: white;
+      border-radius: 2rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      font-size: 0.8rem;
+      margin-bottom: 1rem;
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #f39c12;
+    }
+    
+    .status-dot.connected {
+      background: #2ecc71;
+    }
+    
+    .status-dot.error {
+      background: #e74c3c;
+    }
+  </style>
+</head>
+<body>
+<div class="platform">
+  <header class="glass">
+    <div class="logo">
+      <i class="fas fa-chart-line"></i>
+      <h1>Market<span>Pulse Pro</span></h1>
+    </div>
+    <div class="search-wrapper" id="searchWrapper">
+      <div class="global-search">
+        <input type="text" id="globalSymbolInput" placeholder="Search NSE stocks..." value="" autocomplete="off">
+        <button id="globalAnalyzeBtn"><i class="fas fa-search"></i> Analyze</button>
+      </div>
+      <div class="suggestions-dropdown" id="suggestionsDropdown"></div>
+    </div>
+  </header>
+
+  <div class="tab-bar" id="tabBar">
+    <button class="tab active" data-tab="overview">🏠 Overview</button>
+    <button class="tab" data-tab="charts">📊 Charts</button>
+    <button class="tab" data-tab="compare">⚖️ Compare</button>
+    <button class="tab" data-tab="screener">🔎 Screener</button>
+    <button class="tab" data-tab="marketdepth">📋 Depth</button>
+    <button class="tab" data-tab="fundamental">💰 Fundamental</button>
+    <button class="tab" data-tab="floorsheet">🧾 Floorsheet</button>
+    <button class="tab" data-tab="forecast">🔮 Forecast</button>
+    <button class="tab" data-tab="ai">🤖 AI</button>
+  </div>
+
+  <div id="tabContent" class="glass" style="min-height: 520px;"></div>
+  
+  <!-- Market Overview Section -->
+  <section class="stock-container glass" style="margin-top: 1.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <h2 style="color: #1a2740; margin: 0;">
+        <i class="fas fa-globe"></i> NSE Market Watch
+      </h2>
+      <div class="api-status" id="apiStatus">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Connecting to server...</span>
+      </div>
+    </div>
+    <div id="stock-list" class="stock-grid">
+      <p class="loading-text">
+        <i class="fas fa-spinner fa-spin"></i> Fetching live data from NSE...
+      </p>
+    </div>
+  </section>
+  
+  <!-- Modal for expanded lists -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-content" id="modalContent"></div>
+  </div>
+
+  <div style="text-align: center; font-size: 0.7rem; color: #6b7a99; padding: 0.3rem;">
+    ⚡ Live NSE data via FastAPI backend · Advanced analytics · Not financial advice
+  </div>
+</div>
+
+<script>
+// ============================================
+// MAIN APPLICATION SCRIPT
+// ============================================
+
+// Global state
+let stockDatabase = [];
+let currentSymbol = "RELIANCE.NS";
+let activeTab = "overview";
+let currentChartSymbol = "RELIANCE.NS";
+let currentChartTf = "1D";
+let overviewChartInst = null;
+let fullChartInst = null;
+let activeNewsCategory = 'global';
+let compareList = ['RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS'];
+
+// API Configuration
+const API_BASE_URL = 'https://dreamstock-backend.onrender.com';
+
+// Company names mapping
+const companyNames = {
+  'RELIANCE.NS': 'Reliance Industries', 'TCS.NS': 'Tata Consultancy Services',
+  'HDFCBANK.NS': 'HDFC Bank', 'ICICIBANK.NS': 'ICICI Bank',
+  'BHARTIARTL.NS': 'Bharti Airtel', 'INFY.NS': 'Infosys',
+  'SBIN.NS': 'State Bank of India', 'LICI.NS': 'LIC India',
+  'ITC.NS': 'ITC Limited', 'HINDUNILVR.NS': 'Hindustan Unilever',
+  'LT.NS': 'Larsen & Toubro', 'BAJFINANCE.NS': 'Bajaj Finance',
+  'HCLTECH.NS': 'HCL Technologies', 'MARUTI.NS': 'Maruti Suzuki',
+  'SUNPHARMA.NS': 'Sun Pharmaceutical', 'ADANIENT.NS': 'Adani Enterprises',
+  'KOTAKBANK.NS': 'Kotak Mahindra Bank', 'TITAN.NS': 'Titan Company',
+  'ULTRACEMCO.NS': 'UltraTech Cement', 'AXISBANK.NS': 'Axis Bank',
+  'NTPC.NS': 'NTPC Limited', 'ADANIPORTS.NS': 'Adani Ports',
+  'ASIANPAINT.NS': 'Asian Paints', 'COALINDIA.NS': 'Coal India',
+  'BAJAJFINSV.NS': 'Bajaj Finserv', 'BPCL.NS': 'Bharat Petroleum',
+  'ONGC.NS': 'ONGC', 'M&M.NS': 'Mahindra & Mahindra',
+  'TATAMOTORS.NS': 'Tata Motors', 'JSWSTEEL.NS': 'JSW Steel',
+  'TATASTEEL.NS': 'Tata Steel', 'ADANIPOWER.NS': 'Adani Power',
+  'HINDALCO.NS': 'Hindalco Industries', 'GRASIM.NS': 'Grasim Industries',
+  'NESTLEIND.NS': 'Nestle India', 'POWERGRID.NS': 'Power Grid Corporation',
+  'TECHM.NS': 'Tech Mahindra', 'WIPRO.NS': 'Wipro',
+  'INDUSINDBK.NS': 'IndusInd Bank', 'SBILIFE.NS': 'SBI Life Insurance'
+};
+
+// Sector mapping
+const sectors = {
+  'RELIANCE.NS': 'Oil & Gas', 'TCS.NS': 'IT Services', 'HDFCBANK.NS': 'Banking',
+  'ICICIBANK.NS': 'Banking', 'BHARTIARTL.NS': 'Telecom', 'INFY.NS': 'IT Services',
+  'SBIN.NS': 'Banking', 'LICI.NS': 'Insurance', 'ITC.NS': 'FMCG',
+  'HINDUNILVR.NS': 'FMCG', 'LT.NS': 'Infrastructure', 'BAJFINANCE.NS': 'Financial Services',
+  'HCLTECH.NS': 'IT Services', 'MARUTI.NS': 'Automobile', 'SUNPHARMA.NS': 'Pharmaceuticals',
+  'ADANIENT.NS': 'Conglomerate', 'KOTAKBANK.NS': 'Banking', 'TITAN.NS': 'Consumer Durables',
+  'ULTRACEMCO.NS': 'Cement', 'AXISBANK.NS': 'Banking', 'NTPC.NS': 'Power',
+  'ADANIPORTS.NS': 'Infrastructure', 'ASIANPAINT.NS': 'Consumer Durables', 'COALINDIA.NS': 'Mining',
+  'BAJAJFINSV.NS': 'Financial Services', 'BPCL.NS': 'Oil & Gas', 'ONGC.NS': 'Oil & Gas',
+  'M&M.NS': 'Automobile', 'TATAMOTORS.NS': 'Automobile', 'JSWSTEEL.NS': 'Steel',
+  'TATASTEEL.NS': 'Steel', 'ADANIPOWER.NS': 'Power', 'HINDALCO.NS': 'Metals',
+  'GRASIM.NS': 'Cement', 'NESTLEIND.NS': 'FMCG', 'POWERGRID.NS': 'Power',
+  'TECHM.NS': 'IT Services', 'WIPRO.NS': 'IT Services', 'INDUSINDBK.NS': 'Banking',
+  'SBILIFE.NS': 'Insurance'
+};
+
+// Fetch stock data from backend
+async function fetchMarketData() {
+  const container = document.getElementById('stock-list');
+  const statusDot = document.getElementById('statusDot');
+  const statusText = document.getElementById('statusText');
+  
+  // Show loading state
+  statusDot.className = 'status-dot';
+  statusText.textContent = 'Connecting to server...';
+  
+  try {
+    const response = await fetch(`${API_BASE_URL}/stocks/market-watch`);
+    
+    if (!response.ok) {
+      throw new Error(`Server responded with ${response.status}`);
+    }
+    
+    const result = await response.json();
+    
+    if (result && result.data && result.data.length > 0) {
+      stockDatabase = result.data.map(stock => ({
+        symbol: stock.symbol,
+        name: companyNames[stock.symbol] || stock.symbol.replace('.NS', ''),
+        price: stock.price,
+        rsi: stock.rsi,
+        status: stock.status,
+        sector: sectors[stock.symbol] || 'General',
+        exchange: 'NSE',
+        country: 'India',
+        basePrice: stock.price
+      }));
+      
+      // Update status
+      statusDot.className = 'status-dot connected';
+      statusText.textContent = `Live data loaded (${stockDatabase.length} stocks)`;
+      
+      // Render the data
+      displayStocks();
+      
+      // Initialize tabs if not done yet
+      if (!window.tabsInitialized) {
+        switchTab('overview');
+        window.tabsInitialized = true;
+      }
+      
+      console.log('✅ Market data loaded successfully');
+    } else {
+      throw new Error('No data received from server');
+    }
+    
+  } catch (error) {
+    console.error('❌ Failed to fetch market data:', error);
+    
+    // Show error state
+    statusDot.className = 'status-dot error';
+    statusText.textContent = 'Server connection failed';
+    
+    if (container) {
+      container.innerHTML = `
+        <div class="loading-text" style="grid-column: 1/-1;">
+          <i class="fas fa-exclamation-triangle" style="color: #e74c3c; font-size: 2rem;"></i>
+          <p style="margin-top: 1rem; color: #e74c3c;">Failed to connect to server</p>
+          <p style="color: #6b7a99; font-size: 0.9rem;">${error.message}</p>
+          <button onclick="fetchMarketData()" class="hero-btn" style="margin-top: 1rem;">
+            <i class="fas fa-redo"></i> Retry
+          </button>
+        </div>
+      `;
+    }
+  }
+}
+
+// Display stocks in grid
+function displayStocks() {
+  const container = document.getElementById('stock-list');
+  if (!container || stockDatabase.length === 0) return;
+  
+  container.innerHTML = stockDatabase.map(stock => `
+    <div class="stock-card" onclick="showStockDetails('${stock.symbol}')">
+      <h3>${stock.symbol.replace('.NS', '')}</h3>
+      <div class="price-row">
+        <span class="label">Price:</span>
+        <span class="value">₹${stock.price.toLocaleString('en-IN')}</span>
+      </div>
+      <div class="rsi-row">
+        <span class="label">RSI (14):</span>
+        <span class="value">${stock.rsi}</span>
+      </div>
+      <div class="status-tag ${stock.status}">${stock.status}</div>
+    </div>
+  `).join('');
+}
+
+// Get stock info
+function getStockInfo(sym) {
+  const found = stockDatabase.find(s => s.symbol === sym);
+  return found || { 
+    symbol: sym, 
+    name: companyNames[sym] || sym, 
+    sector: sectors[sym] || 'General',
+    exchange: 'NSE', 
+    country: 'India', 
+    basePrice: 500 + Math.random() * 2000 
+  };
+}
+
+// Generate stock details for modals
+function generateStockDetails(symbol) {
+  const info = getStockInfo(symbol);
+  const basePrice = info.basePrice || 1000;
+  const seed = symbol.split('').reduce((a,b) => a+b.charCodeAt(0), 0) % 100 / 100;
+  
+  return {
+    symbol: symbol,
+    companyName: info.name,
+    sector: info.sector,
+    exchange: info.exchange,
+    country: info.country,
+    ltp: basePrice,
+    prevClose: basePrice * (1 + (Math.random() - 0.5) * 0.02),
+    open: basePrice * (1 + (Math.random() - 0.5) * 0.01),
+    high: basePrice * (1 + Math.random() * 0.02),
+    low: basePrice * (1 - Math.random() * 0.02),
+    week52High: basePrice * 1.3,
+    week52Low: basePrice * 0.7,
+    volume: Math.floor(seed * 5000000 + 500000),
+    avgVolume: Math.floor(seed * 4000000 + 400000),
+    turnover: basePrice * Math.floor(seed * 5000000 + 500000),
+    marketCap: basePrice * Math.floor(seed * 5000000000 + 1000000000),
+    sharesOutstanding: Math.floor(seed * 5000000000 + 500000000),
+    freeFloat: Math.floor(seed * 3000000000 + 300000000),
+    peRatio: (basePrice / (seed * 10 + 2)).toFixed(2),
+    pbRatio: (basePrice / (seed * 50 + 10)).toFixed(2),
+    eps: (basePrice / (seed * 30 + 5)).toFixed(2),
+    bookValue: (basePrice / (seed * 5 + 1)).toFixed(2),
+    roe: (seed * 30 + 5).toFixed(2),
+    roa: (seed * 15 + 2).toFixed(2),
+    debtToEquity: (seed * 2).toFixed(2),
+    dividendYield: (seed * 3).toFixed(2),
+    dayRange: { 
+      low: basePrice * (1 - Math.random() * 0.02), 
+      high: basePrice * (1 + Math.random() * 0.02) 
+    },
+    beta: (seed * 2 + 0.5).toFixed(2),
+    industryPE: (seed * 30 + 10).toFixed(2)
+  };
+}
+
+// Generate timeframe data for charts
+function generateTimeframeData(symbol, tf) {
+  const info = getStockInfo(symbol);
+  const base = info.basePrice || 1000;
+  let vol = 0.015;
+  let points = 50;
+  let stepMs = 24 * 60 * 60 * 1000;
+  
+  if (tf === '1m') { points = 60; stepMs = 60 * 1000; vol = 0.001; }
+  else if (tf === '5m') { points = 60; stepMs = 5 * 60 * 1000; vol = 0.002; }
+  else if (tf === '15m') { points = 60; stepMs = 15 * 60 * 1000; vol = 0.003; }
+  else if (tf === '1H') { points = 48; stepMs = 60 * 60 * 1000; vol = 0.005; }
+  else if (tf === '1D') { points = 60; stepMs = 24 * 60 * 60 * 1000; }
+  else if (tf === '1W') { points = 52; stepMs = 7 * 24 * 60 * 60 * 1000; vol = 0.03; }
+  else if (tf === '1M') { points = 24; stepMs = 30 * 24 * 60 * 60 * 1000; vol = 0.06; }
+  else if (tf === '1Y') { points = 10; stepMs = 365 * 24 * 60 * 60 * 1000; vol = 0.15; }
+
+  let price = base * (1 + (Math.random() * 0.1 - 0.05));
+  const res = [];
+  const now = Date.now();
+  
+  for (let i = points; i >= 0; i--) {
+    const d = new Date(now - i * stepMs);
+    price += (Math.random() - 0.48) * vol * price;
+    let label = '';
+    if (['1m','5m','15m','1H'].includes(tf)) label = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    else if (tf === '1Y') label = d.getFullYear().toString();
+    else if (tf === '1M') label = d.toLocaleDateString([], {month: 'short', year: '2-digit'});
+    else label = d.toLocaleDateString([], {month: 'short', day: 'numeric'});
+    res.push({ date: label, price: +price.toFixed(2) });
+  }
+  return res;
+}
+
+function generatePriceSeries(symbol, days = 50) {
+  return generateTimeframeData(symbol, '1D').slice(-days);
+}
+
+function computeFullIndicators(prices) {
+  const close = prices.map(p => p.price);
+  const current = close[close.length-1];
+  const sma20 = close.slice(-20).reduce((a,b)=>a+b,0)/20;
+  const sma50 = close.length >= 50 ? close.slice(-50).reduce((a,b)=>a+b,0)/50 : sma20;
+  
+  let rsi = 50;
+  if (close.length > 14) {
+    const changes = [];
+    for (let i=close.length-14; i<close.length; i++) changes.push(close[i]-close[i-1]);
+    const gains = changes.filter(c=>c>0).reduce((a,b)=>a+b,0)/14;
+    const losses = Math.abs(changes.filter(c=>c<0).reduce((a,b)=>a+b,0))/14;
+    if (losses !== 0) rsi = 100 - (100/(1+(gains/losses)));
+  }
+  
+  const ema12 = close.slice(-12).reduce((a,b)=>a+b,0)/12;
+  const ema26 = close.slice(-26).reduce((a,b)=>a+b,0)/26;
+  const macd = ema12 - ema26;
+  const std20 = Math.sqrt(close.slice(-20).map(p => Math.pow(p-sma20,2)).reduce((a,b)=>a+b,0)/20);
+  
+  return { 
+    current: +current.toFixed(2), sma20: +sma20.toFixed(2), sma50: +sma50.toFixed(2),
+    rsi: +rsi.toFixed(1), macd: +macd.toFixed(2), 
+    upperBB: +(sma20 + 2*std20).toFixed(2), lowerBB: +(sma20 - 2*std20).toFixed(2)
+  };
+}
+
+function getAllMarketData() {
+  if (stockDatabase.length === 0) return [];
+  return stockDatabase.map(s => ({
+    symbol: s.symbol,
+    name: s.name,
+    sector: s.sector,
+    price: s.price.toFixed(2),
+    change: parseFloat((Math.random() * 6 - 3).toFixed(2)),
+    volume: (Math.random() * 8 + 1).toFixed(2) + 'M',
+    turnover: (Math.random() * 1200 + 150).toFixed(1) + 'M',
+    transactions: Math.floor(Math.random() * 18000 + 2500)
+  }));
+}
+
+function getTopGainers(count = 5) { 
+  return getAllMarketData().filter(s => s.change > 0).sort((a,b) => b.change - a.change).slice(0, count); 
+}
+
+function getTopLosers(count = 5) { 
+  return getAllMarketData().filter(s => s.change < 0).sort((a,b) => a.change - b.change).slice(0, count); 
+}
+
+// News data
+const categorizedNews = {
+  global: ["RBI keeps repo rate unchanged at 6.5%", "Indian markets reach new highs", "FII inflows strengthen rupee"],
+  corporate: ["Reliance reports 12% profit growth", "TCS wins \$2 billion deal", "HDFC Bank completes merger integration"],
+  economy: ["GDP growth projected at 7.2%", "Manufacturing PMI expands to 59.1", "GST collections hit record high"]
+};
+
+// Render Overview Tab
+function renderOverview() {
+  const allData = getAllMarketData();
+  if (allData.length === 0) {
+    return '<p style="text-align:center; padding:2rem;">Loading data... Please wait.</p>';
+  }
+  
+  const topGainers = getTopGainers(5);
+  const topLosers = getTopLosers(5);
+  const topTurnover = [...allData].sort((a,b) => parseFloat(b.turnover) - parseFloat(a.turnover)).slice(0, 5);
+  const topVolume = [...allData].sort((a,b) => parseFloat(b.volume) - parseFloat(a.volume)).slice(0, 5);
+
+  const symbolOptions = stockDatabase.map(s => 
+    `<option value="\${s.symbol}" ${currentChartSymbol===s.symbol?'selected':''}>${s.symbol.replace('.NS','')} - ${s.name}</option>`
+  ).join('');
+
+  const timeframes = ['1m','5m','15m','1H','1D','1W','1M','1Y'];
+  const tfButtons = timeframes.map(tf => 
+    `<button class="tf-btn ${currentChartTf===tf?'active':''}" data-tf="${tf}">${tf}</button>`
+  ).join('');
+
+  return `
+    <div class="hero-banner">
+      <div>
+        <h2>NSE Market Watch</h2>
+        <p>Live data from <strong>${stockDatabase.length} stocks</strong> on NSE</p>
+      </div>
+      <button onclick="fetchMarketData()" class="hero-btn"><i class="fas fa-sync-alt"></i> Refresh Data</button>
+    </div>
+
+    <div class="grid-2col" style="margin-bottom:1.5rem;">
+      <div>
+        <div class="card-title" style="justify-content: space-between;">
+          <span><i class="fas fa-chart-area"></i> Market Trend</span>
+          <select id="overviewChartSymbol" style="padding:0.3rem 0.6rem; border-radius:0.5rem; border:1px solid #d0d8e8; outline:none;">
+            ${symbolOptions}
+          </select>
+        </div>
+        <div class="timeframe-selector" style="display:flex; gap:0.3rem; margin-bottom:0.8rem; overflow-x:auto;">${tfButtons}</div>
+        <div style="position:relative; height:180px; width:100%;"><canvas id="overviewMiniChart"></canvas></div>
+      </div>
+      
+      <div>
+        <div class="card-title"><i class="fas fa-newspaper"></i> Market Pulse</div>
+        <div class="news-tabs">
+          <button class="news-tab-btn ${activeNewsCategory==='global'?'active':''}" data-cat="global">Global</button>
+          <button class="news-tab-btn ${activeNewsCategory==='corporate'?'active':''}" data-cat="corporate">Corporate</button>
+          <button class="news-tab-btn ${activeNewsCategory==='economy'?'active':''}" data-cat="economy">Economy</button>
+        </div>
+        ${categorizedNews[activeNewsCategory].map(n => 
+          `<div class="news-item"><i class="fas fa-circle" style="font-size:0.35rem; color:#2d6a9f; margin-top:0.4rem;"></i> ${n}</div>`
+        ).join('')}
+      </div>
+    </div>
+
+    <div class="grid-3col" style="margin-bottom:1.5rem;">
+      <div>
+        <div class="card-title"><i class="fas fa-arrow-up positive"></i> Top Gainers</div>
+        ${topGainers.map(g => `<div class="list-row" style="cursor:pointer;" onclick="showStockDetails('${g.symbol}')"><span><strong>${g.symbol.replace('.NS','')}</strong></span><span>₹${g.price}</span><span class="positive">+${g.change}%</span></div>`).join('')}
+      </div>
+      <div>
+        <div class="card-title"><i class="fas fa-arrow-down negative"></i> Top Losers</div>
+        ${topLosers.map(l => `<div class="list-row" style="cursor:pointer;" onclick="showStockDetails('${l.symbol}')"><span><strong>${l.symbol.replace('.NS','')}</strong></span><span>₹${l.price}</span><span class="negative">${l.change}%</span></div>`).join('')}
+      </div>
+      <div>
+        <div class="card-title"><i class="fas fa-money-bill-wave"></i> Top Turnover</div>
+        ${topTurnover.map(t => `<div class="list-row" style="cursor:pointer;" onclick="showStockDetails('${t.symbol}')"><span><strong>${t.symbol.replace('.NS','')}</strong></span><span>${t.turnover}</span></div>`).join('')}
+      </div>
+    </div>
+  `;
+}
+
+// Simple render for other tabs (charts, compare, etc.)
+function renderCharts() {
+  const symbolOptions = stockDatabase.map(s => 
+    `<option value="${s.symbol}" ${currentChartSymbol===s.symbol?'selected':''}>${s.symbol.replace('.NS','')} - ${s.name}</option>`
+  ).join('');
+  const timeframes = ['1m','5m','15m','1H','1D','1W','1M','1Y'];
+  const tfButtons = timeframes.map(tf => 
+    `<button class="tf-btn ${currentChartTf===tf?'active':''}" data-tf="${tf}">${tf}</button>`
+  ).join('');
+
+  return `
+    <div style="margin-bottom:1.5rem;">
+      <h3><i class="fas fa-chart-line"></i> Advanced Chart</h3>
+      <div style="display:flex; gap:1rem; margin-top:1rem;">
+        <select id="fullChartSymbol" style="padding:0.5rem 1rem; border-radius:2rem; border:1px solid #d0d8e8;">
+          ${symbolOptions}
+        </select>
+        <div class="timeframe-selector" id="fullChartTfSelector" style="display:flex; gap:0.3rem;">
+          ${tfButtons}
+        </div>
+      </div>
+    </div>
+    <div style="background:white; border-radius:1rem; padding:1.5rem; height:450px;">
+      <canvas id="fullChartCanvas"></canvas>
+    </div>
+  `;
+}
+
+function renderCompare() {
+  return `
+    <h3><i class="fas fa-balance-scale"></i> Peer Comparison</h3>
+    <p style="color:#6b7a99;">Select stocks to compare side-by-side.</p>
+    <div class="compare-grid">
+      ${compareList.map((sym, i) => {
+        const info = getStockInfo(sym);
+        return `
+          <div class="compare-col">
+            <input type="text" id="cmp${i}" value="${sym}" placeholder="Symbol" style="width:100%; margin-bottom:1rem; text-align:center;">
+            <h4>${info.name}</h4>
+            <p>₹${info.basePrice?.toFixed(2) || 'N/A'}</p>
+            <p>Sector: ${info.sector}</p>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+function renderScreener() {
+  if (stockDatabase.length === 0) return '<p>Loading data...</p>';
+  return `
+    <h3><i class="fas fa-search-dollar"></i> Stock Screener</h3>
+    <div style="display:flex; gap:0.5rem; margin:1rem 0; flex-wrap:wrap;">
+      <input type="text" id="techSymbolFilter" placeholder="Symbol" style="padding:0.5rem 1rem; border-radius:2rem; border:1px solid #d0d8e8;">
+      <select id="scrSignal" style="padding:0.5rem 1rem; border-radius:2rem; border:1px solid #d0d8e8;">
+        <option value="All">All Signals</option>
+        <option value="Overbought">Overbought</option>
+        <option value="Oversold">Oversold</option>
+        <option value="Neutral">Neutral</option>
+      </select>
+      <button id="techFilterBtn" class="hero-btn">Apply Filters</button>
+    </div>
+    <div class="stock-grid">
+      ${stockDatabase.slice(0, 20).map(s => `
+        <div class="stock-card" onclick="showStockDetails('${s.symbol}')">
+          <h3>${s.symbol.replace('.NS','')}</h3>
+          <p>₹${s.price.toLocaleString('en-IN')}</p>
+          <p>RSI: ${s.rsi}</p>
+          <div class="status-tag ${s.status}">${s.status}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderMarketDepth() { return `<h3>Market Depth</h3><p>Select a stock to view order book.</p>`; }
+function renderFundamental() { return `<h3>Fundamental Analysis</h3><p>Select a stock for detailed fundamentals.</p>`; }
+function renderFloorsheet() { return `<h3>Floorsheet</h3><p>Recent transactions will appear here.</p>`; }
+function renderForecast() { return `<h3>Forecast</h3><p>AI-powered price predictions coming soon.</p>`; }
+function renderAIAnalysis() { return `<h3>AI Analysis</h3><p>Machine learning insights loading...</p>`; }
+
+// Tab switching
+window.switchTab = function(tabId) {
+  activeTab = tabId;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.tab[data-tab="${tabId}"]`)?.classList.add('active');
+  
+  const container = document.getElementById('tabContent');
+  let html = '';
+  
+  switch(tabId) {
+    case 'overview': html = renderOverview(); break;
+    case 'charts': html = renderCharts(); break;
+    case 'compare': html = renderCompare(); break;
+    case 'screener': html = renderScreener(); break;
+    case 'marketdepth': html = renderMarketDepth(); break;
+    case 'fundamental': html = renderFundamental(); break;
+    case 'floorsheet': html = renderFloorsheet(); break;
+    case 'forecast': html = renderForecast(); break;
+    case 'ai': html = renderAIAnalysis(); break;
+    default: html = renderOverview();
+  }
+  
+  container.innerHTML = html;
+  
+  // Draw charts if needed
+  if (tabId === 'overview') setTimeout(drawOverviewMiniChart, 100);
+  if (tabId === 'charts') setTimeout(drawFullChart, 100);
+};
+
+function drawOverviewMiniChart() {
+  const canvas = document.getElementById('overviewMiniChart');
+  if (!canvas) return;
+  const data = generateTimeframeData(currentChartSymbol, currentChartTf);
+  if (overviewChartInst) overviewChartInst.destroy();
+  
+  overviewChartInst = new Chart(canvas, {
+    type: 'line',
+    data: { 
+      labels: data.map(d => d.date), 
+      datasets: [{ 
+        data: data.map(d => d.price), 
+        borderColor: '#2d6a9f', 
+        backgroundColor: 'rgba(45,106,159,0.1)',
+        fill: true, 
+        tension: 0.2 
+      }] 
+    },
+    options: { 
+      responsive: true, 
+      maintainAspectRatio: false, 
+      plugins: { legend: { display: false } } 
+    }
+  });
+}
+
+function drawFullChart() {
+  const canvas = document.getElementById('fullChartCanvas');
+  if (!canvas) return;
+  const data = generateTimeframeData(currentChartSymbol, currentChartTf);
+  if (fullChartInst) fullChartInst.destroy();
+  
+  fullChartInst = new Chart(canvas, {
+    type: 'line',
+    data: { 
+      labels: data.map(d => d.date), 
+      datasets: [{ 
+        data: data.map(d => d.price), 
+        borderColor: '#2d6a9f', 
+        backgroundColor: 'rgba(45,106,159,0.1)',
+        fill: true, 
+        tension: 0.1 
+      }] 
+    },
+    options: { 
+      responsive: true, 
+      maintainAspectRatio: false, 
+      plugins: { legend: { display: false } } 
+    }
+  });
+}
+
+// Stock details modal
+window.showStockDetails = function(symbol) {
+  const stockData = generateStockDetails(symbol);
+  const overlay = document.getElementById('modalOverlay');
+  const content = document.getElementById('modalContent');
+  const changePercent = ((stockData.ltp - stockData.prevClose) / stockData.prevClose * 100).toFixed(2);
+  const isPositive = parseFloat(changePercent) >= 0;
+  
+  content.innerHTML = `
+    <div class="modal-header">
+      <h2>${symbol.replace('.NS','')} · ${stockData.companyName}</h2>
+      <button class="modal-close" onclick="document.getElementById('modalOverlay').classList.remove('active')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem; padding:1.5rem; background:#f8fafd; border-radius:1rem;">
+        <span style="font-size:2.5rem; font-weight:700;">₹${stockData.ltp.toFixed(2)}</span>
+        <span class="badge ${isPositive ? 'positive-bg' : 'negative-bg'}" style="font-size:1.1rem; padding:0.4rem 1rem;">
+          ${isPositive ? '+' : ''}${changePercent}%
+        </span>
+      </div>
+      <div class="grid-2col">
+        <div>
+          <h4>📊 Price Information</h4>
+          <div class="detail-row"><span>Open</span><span>₹${stockData.open.toFixed(2)}</span></div>
+          <div class="detail-row"><span>High</span><span>₹${stockData.high.toFixed(2)}</span></div>
+          <div class="detail-row"><span>Low</span><span>₹${stockData.low.toFixed(2)}</span></div>
+          <div class="detail-row"><span>Prev Close</span><span>₹${stockData.prevClose.toFixed(2)}</span></div>
+          <div class="detail-row"><span>52W High</span><span>₹${stockData.week52High.toFixed(2)}</span></div>
+          <div class="detail-row"><span>52W Low</span><span>₹${stockData.week52Low.toFixed(2)}</span></div>
+        </div>
+        <div>
+          <h4>💰 Market Information</h4>
+          <div class="detail-row"><span>Market Cap</span><span>₹${(stockData.marketCap/1e9).toFixed(2)}B</span></div>
+          <div class="detail-row"><span>P/E Ratio</span><span>${stockData.peRatio}</span></div>
+          <div class="detail-row"><span>P/B Ratio</span><span>${stockData.pbRatio}</span></div>
+          <div class="detail-row"><span>ROE</span><span>${stockData.roe}%</span></div>
+          <div class="detail-row"><span>Dividend Yield</span><span>${stockData.dividendYield}%</span></div>
+        </div>
+      </div>
+    </div>
+  `;
+  overlay.classList.add('active');
+};
+
+// Search functionality
+function searchStocks(query) {
+  const upper = query.toUpperCase();
+  return stockDatabase.filter(stock => 
+    stock.symbol.toUpperCase().includes(upper) || 
+    stock.name.toUpperCase().includes(upper)
+  );
+}
+
+// Tab click handler
+document.getElementById('tabBar').addEventListener('click', (e) => {
+  if (e.target.classList.contains('tab')) {
+    switchTab(e.target.dataset.tab);
+  }
+});
+
+// Global search
+document.getElementById('globalAnalyzeBtn').addEventListener('click', () => {
+  const val = document.getElementById('globalSymbolInput').value.trim().toUpperCase();
+  if (val) {
+    const match = stockDatabase.find(s => 
+      s.symbol.toUpperCase().includes(val) || 
+      s.name.toUpperCase().includes(val)
+    );
+    if (match) {
+      currentSymbol = match.symbol;
+      currentChartSymbol = match.symbol;
+      showStockDetails(match.symbol);
+    }
+  }
+});
+
+// Initialize on load
+window.addEventListener('load', async () => {
+  await fetchMarketData();
+  
+  // Set up auto-refresh every 5 minutes
+  setInterval(fetchMarketData, 300000);
+});
+</script>
+</body>
+</html>
