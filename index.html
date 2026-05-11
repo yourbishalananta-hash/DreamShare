@@ -4,8 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
   <title>MarketPulse Pro • Ultimate Stock Analysis Suite</title>
+  
+  <!-- External CSS -->
   <link rel="stylesheet" href="style.css">
+  
+  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -26,6 +32,7 @@
 
   <div class="tab-bar" id="tabBar">
     <button class="tab active" data-tab="overview">🏠 Overview</button>
+    <button class="tab" data-tab="charts">📊 Charts</button>
     <button class="tab" data-tab="marketdepth">📋 Market Depth</button>
     <button class="tab" data-tab="technicals">📈 Technical Screener</button>
     <button class="tab" data-tab="fundamental">💰 Fundamental</button>
@@ -36,22 +43,13 @@
 
   <div id="tabContent" class="glass" style="min-height: 520px;"></div>
   
-  <!-- Market Overview Section - Search bar ABOVE stock list -->
-  <section class="stock-container glass">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-      <h2 style="color: #1a2740; margin: 0;">
-        <i class="fas fa-globe"></i> Market Overview
-      </h2>
-      <div class="search-wrapper" id="marketSearchWrapper" style="position: relative;">
-        <div class="global-search" style="padding: 0.3rem 0.3rem 0.3rem 1rem;">
-          <input type="text" id="marketSearchInput" placeholder="Search stocks..." value="" autocomplete="off" style="width: 180px;">
-          <button id="marketSearchBtn" style="padding: 0.5rem 1rem;"><i class="fas fa-search"></i></button>
-        </div>
-        <div class="suggestions-dropdown" id="marketSuggestionsDropdown" style="width: 300px;"></div>
-      </div>
-    </div>
-    <div id="stock-list" class="market-grid">
-      <p style="text-align: center; padding: 2rem; color: #6b7a99; grid-column: 1 / -1;">
+  <!-- Market Overview Section -->
+  <section class="stock-container glass" style="margin-top: 1.5rem;">
+    <h2 style="margin-bottom: 1rem; color: #1a2740;">
+      <i class="fas fa-globe"></i> Market Overview
+    </h2>
+    <div id="stock-list">
+      <p style="text-align: center; padding: 2rem; color: #6b7a99;">
         <i class="fas fa-spinner fa-spin"></i> Loading stocks...
       </p>
     </div>
@@ -67,6 +65,7 @@
   </div>
 </div>
 
+<!-- JavaScript files (order matters!) -->
 <script src="stocks.js"></script>
 <script src="main.js"></script>
 </body>
