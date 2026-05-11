@@ -85,7 +85,6 @@
     const info = getStockInfo(symbol);
     const basePrice = info.basePrice;
     
-    // Create a pseudo-random seed based on symbol so values stay consistent
     const seed = symbol.split('').reduce((a,b)=>a+b.charCodeAt(0),0) % 100 / 100;
     const volatility = basePrice * 0.15;
     
@@ -291,14 +290,12 @@
     const greeting = hours < 12 ? 'Good Morning' : hours < 18 ? 'Good Afternoon' : 'Good Evening';
     const mkt = marketIndices["S&P 500"];
     
-    // Fetch all needed data
     const allData = getAllMarketData();
     const topGainers = getTopGainers(5);
     const topLosers = getTopLosers(5);
     const breakouts = getBreakouts();
     const topTurnover = [...allData].sort((a,b) => parseFloat(b.turnover) - parseFloat(a.turnover)).slice(0, 5);
     const topVolume = [...allData].sort((a,b) => parseFloat(b.volume) - parseFloat(a.volume)).slice(0, 5);
-    const topTransactions =[...allData].sort((a,b) => b.transactions - a.transactions).slice(0, 5);
 
     const symbolOptions = `<option value="MARKET" ${currentChartSymbol==='MARKET'?'selected':''}>Overall Market (S&P 500)</option>` + 
       stockDatabase.map(s => `<option value="${s.symbol}" ${currentChartSymbol===s.symbol?'selected':''}>${s.symbol} - ${s.name}</option>`).join('');
@@ -365,8 +362,8 @@
         </div>
         <div>
           <div class="card-title"><i class="fas fa-fire"></i> 52-Week Breakouts</div>
-          ${breakouts.highs.map(h => `<div class="list-row" style="cursor: pointer;" onclick="showStockDetails('${h.symbol}')"><span><strong>${h.symbol}</strong></span><span style="font-size:0.8rem; color:#6b7a99;">Near High</span><span class="positive badge">🚀</span></div>`).join('')}
-          ${breakouts.lows.map(l => `<div class="list-row" style="cursor: pointer;" onclick="showStockDetails('${l.symbol}')"><span><strong>${l.symbol}</strong></span><span style="font-size:0.8rem; color:#6b7a99;">Near Low</span><span class="negative badge" style="background:#ffeef0; color:#c4384a;">📉</span></div>`).join('')}
+          ${breakouts.highs.map(h => `<div class="list-row" style="cursor: pointer;" onclick="showStockDetails('${h.symbol}')"><span><strong>${h.symbol}</strong></span><span style="font-size:0.8rem; color:#6b7a99;">Near High</span><span class="positive badge positive-bg">🚀</span></div>`).join('')}
+          ${breakouts.lows.map(l => `<div class="list-row" style="cursor: pointer;" onclick="showStockDetails('${l.symbol}')"><span><strong>${l.symbol}</strong></span><span style="font-size:0.8rem; color:#6b7a99;">Near Low</span><span class="negative badge negative-bg">📉</span></div>`).join('')}
         </div>
       </div>
 
@@ -729,58 +726,86 @@
     });
   }
 
-  // MODALS
+  // ============================================
+  // UPGRADED TABULAR MODALS 
+  // ============================================
+
+  // Core reusable function for drawing modern Tables inside Modals
+  function showModal(title, data, columns) {
+    const overlay = document.getElementById('modalOverlay');
+    const content = document.getElementById('modalContent');
+    
+    let html = `
+      <div class="modal-header">
+        <h2>${title}</h2>
+        <button class="modal-close" onclick="document.getElementById('modalOverlay').classList.remove('active')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <table class="modal-table">
+          <thead>
+            <tr>
+              ${columns.map((c, i) => `<th class="${i > 1 ? 'text-right' : ''}">${c}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+    `;
+    
+    data.forEach(item => {
+      html += `<tr onclick="showStockDetails('${item.symbol}')">`;
+      columns.forEach((col, i) => {
+        const alignClass = i > 1 ? 'text-right' : '';
+        const val = parseFloat(item.change); // Parse change back to number to assign correct color
+        
+        if (col === 'Symbol') html += `<td class="${alignClass}"><strong>${item.symbol}</strong></td>`;
+        else if (col === 'Name') html += `<td class="${alignClass}" style="color:#6b7a99;">${item.name}</td>`;
+        else if (col === 'Price') html += `<td class="${alignClass}"><strong>$${item.price}</strong></td>`;
+        else if (col === 'Change' || col === 'Change%') html += `<td class="${alignClass}"><span class="badge ${val >= 0 ? 'positive-bg' : 'negative-bg'}">${val > 0 ? '+' : ''}${item.change}%</span></td>`;
+        else if (col === 'Volume') html += `<td class="${alignClass}"><strong>${item.volume}</strong></td>`;
+        else if (col === 'Turnover') html += `<td class="${alignClass}"><strong>${item.turnover}</strong></td>`;
+        else if (col === 'Transactions') html += `<td class="${alignClass}"><strong>${item.transactions.toLocaleString()}</strong></td>`;
+      });
+      html += `</tr>`;
+    });
+    
+    html += `</tbody></table></div>`;
+    content.innerHTML = html;
+    overlay.classList.add('active');
+  }
+
   window.showBundle = function(id) {
     const bundle = smartBundles.find(b => b.id === id);
     const data = bundle.stocks.map(sym => {
       const info = getStockInfo(sym);
-      return { symbol: sym, name: info.name, price: info.basePrice.toFixed(2), change: (Math.random() * 4 - 1.5).toFixed(2), volume: '-', turnover: '-', transactions: '-' };
+      return { symbol: sym, name: info.name, price: info.basePrice.toFixed(2), change: (Math.random() * 4 - 1.5).toFixed(2) };
     });
-    showModal(`🧺 ${bundle.name}`, data,['Symbol', 'Name', 'Price', 'Change%']);
+    showModal(`<i class="fas ${bundle.icon}"></i> ${bundle.name}`, data,['Symbol', 'Name', 'Price', 'Change%']);
   }
 
   window.showWhales = function() {
     const overlay = document.getElementById('modalOverlay');
     const content = document.getElementById('modalContent');
     let html = `
-      <button class="modal-close" onclick="document.getElementById('modalOverlay').classList.remove('active')"><i class="fas fa-times"></i></button>
-      <h2 style="margin-bottom:1.5rem;"><i class="fas fa-crown"></i> Super Investors Portfolio Tracker</h2>
-      <div class="grid-3col">
-        ${whalePortfolios.map(w => `
-          <div style="background:#f8fafd; padding:1.5rem; border-radius:1rem; border:1px solid #e0e7f5;">
-            <div style="font-size:2rem; margin-bottom:0.5rem;">${w.icon}</div>
-            <h4 style="margin-bottom:1rem; color:#0a1f38;">${w.name}</h4>
-            ${w.top.map(sym => `<div class="list-row" style="background:white; margin-bottom:0.3rem; cursor:pointer;" onclick="showStockDetails('${sym}')"><span><strong>${sym}</strong></span><span><i class="fas fa-chevron-right" style="color:#d0d8e8; font-size:0.7rem;"></i></span></div>`).join('')}
-          </div>
-        `).join('')}
+      <div class="modal-header">
+        <h2><i class="fas fa-crown"></i> Super Investors Portfolio Tracker</h2>
+        <button class="modal-close" onclick="document.getElementById('modalOverlay').classList.remove('active')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body" style="padding-top: 1.5rem;">
+        <div class="grid-3col">
+          ${whalePortfolios.map(w => `
+            <div style="background:#f8fafd; padding:1.5rem; border-radius:1rem; border:1px solid #e0e7f5;">
+              <div style="font-size:2rem; margin-bottom:0.5rem;">${w.icon}</div>
+              <h4 style="margin-bottom:1rem; color:#0a1f38;">${w.name}</h4>
+              ${w.top.map(sym => `<div class="detail-row" style="background:white; padding: 0.8rem; border-radius: 0.5rem; margin-bottom:0.3rem; border: 1px solid #f0f4f8; cursor:pointer;" onclick="showStockDetails('${sym}')"><span><strong>${sym}</strong></span><span><i class="fas fa-chevron-right" style="color:#d0d8e8; font-size:0.7rem;"></i></span></div>`).join('')}
+            </div>
+          `).join('')}
+        </div>
       </div>
     `;
     content.innerHTML = html;
     overlay.classList.add('active');
   }
 
-  function showModal(title, data, columns) {
-    const overlay = document.getElementById('modalOverlay');
-    const content = document.getElementById('modalContent');
-    let html = `<button class="modal-close" onclick="document.getElementById('modalOverlay').classList.remove('active')"><i class="fas fa-times"></i></button>
-      <h2 style="margin-bottom:1rem;">${title}</h2><div class="list-row header-row">${columns.map(c => `<span>${c}</span>`).join('')}</div>`;
-    data.forEach(item => {
-      html += `<div class="list-row">`;
-      columns.forEach(col => {
-        if (col === 'Symbol') html += `<span><strong>${item.symbol}</strong></span>`;
-        else if (col === 'Name') html += `<span style="color:#6b7a99;">${item.name}</span>`;
-        else if (col === 'Price') html += `<span>$${item.price}</span>`;
-        else if (col === 'Change' || col === 'Change%') html += `<span class="${item.change>=0?'positive':'negative'}">${item.change>=0?'+':''}${item.change}%</span>`;
-        else if (col === 'Volume') html += `<span>${item.volume}</span>`;
-        else if (col === 'Turnover') html += `<span>${item.turnover}</span>`;
-        else if (col === 'Transactions') html += `<span>${item.transactions.toLocaleString()}</span>`;
-      });
-      html += `</div>`;
-    });
-    content.innerHTML = html;
-    overlay.classList.add('active');
-  }
-
+  // Sleek, fully formatted details modal 
   window.showStockDetails = function(symbol) {
     const stockData = generateStockDetails(symbol);
     const overlay = document.getElementById('modalOverlay');
@@ -789,31 +814,60 @@
     const isPositive = parseFloat(changePercent) >= 0;
     
     content.innerHTML = `
-      <button class="modal-close" onclick="document.getElementById('modalOverlay').classList.remove('active')"><i class="fas fa-times"></i></button>
-      <div style="margin-bottom: 1.5rem;"><h2 style="margin-bottom: 0.3rem;">${stockData.symbol} · ${stockData.companyName}</h2><p style="color: #6b7a99; margin: 0;">${stockData.exchange} · ${stockData.sector}</p></div>
-      <div style="display: flex; align-items: baseline; gap: 1rem; margin-bottom: 1.5rem; padding: 1rem; background: #f8fafd; border-radius: 1rem;">
-        <span style="font-size: 2rem; font-weight: 700; color: #0a1f38;">$${stockData.ltp.toFixed(2)}</span>
-        <span class="${isPositive ? 'positive' : 'negative'}" style="font-size: 1.2rem;">${isPositive ? '+' : ''}${changePercent}%</span>
+      <div class="modal-header" style="border-bottom: none; padding-bottom: 0.5rem;">
+        <div style="display:flex; flex-direction:column; gap:0.2rem;">
+          <h2 style="margin: 0;">${stockData.symbol} · ${stockData.companyName}</h2>
+          <p style="color: #6b7a99; font-size: 0.9rem; margin: 0; font-weight: 500;">${stockData.exchange} · ${stockData.sector}</p>
+        </div>
+        <button class="modal-close" onclick="document.getElementById('modalOverlay').classList.remove('active')"><i class="fas fa-times"></i></button>
       </div>
-      <div class="grid-2col" style="margin-bottom: 1rem;">
-        <div><h4 style="margin-bottom: 0.8rem; color: #0a2540;">📊 Price Info</h4><div class="detail-row"><span>Day Range</span><span><strong>$${stockData.dayRange.low.toFixed(2)} - $${stockData.dayRange.high.toFixed(2)}</strong></span></div><div class="detail-row"><span>52W High</span><span><strong>$${stockData.week52High.toFixed(2)}</strong></span></div></div>
-        <div><h4 style="margin-bottom: 0.8rem; color: #0a2540;">💰 Market Info</h4><div class="detail-row"><span>Market Cap</span><span><strong>$${(stockData.marketCap/1e9).toFixed(2)}B</strong></span></div><div class="detail-row"><span>P/E Ratio</span><span><strong>${stockData.peRatio}</strong></span></div></div>
-      </div>
-      <div style="text-align: center; margin-top: 1rem;">
-        <button class="hero-btn" onclick="document.getElementById('globalSymbolInput').value='${symbol}'; currentSymbol='${symbol}'; currentChartSymbol='${symbol}'; switchTab('overview'); document.getElementById('modalOverlay').classList.remove('active');">
-          <i class="fas fa-chart-line"></i> Analyze Stock
-        </button>
+      
+      <div class="modal-body" style="padding-top: 1rem;">
+        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; padding: 1.5rem; background: #f8fafd; border-radius: 1rem; border: 1px solid #e0e7f5;">
+          <span style="font-size: 2.5rem; font-weight: 700; color: #0a1f38;">$${stockData.ltp.toFixed(2)}</span>
+          <span class="badge ${isPositive ? 'positive-bg' : 'negative-bg'}" style="font-size: 1.1rem; padding: 0.4rem 1rem;">${isPositive ? '+' : ''}${changePercent}%</span>
+        </div>
+        
+        <div class="grid-2col" style="margin-bottom: 1rem;">
+          <div>
+            <h4 style="margin-bottom: 0.8rem; color: #0a2540;">📊 Price Information</h4>
+            <div class="detail-row"><span>Open</span><span>$${stockData.open.toFixed(2)}</span></div>
+            <div class="detail-row"><span>High</span><span>$${stockData.high.toFixed(2)}</span></div>
+            <div class="detail-row"><span>Low</span><span>$${stockData.low.toFixed(2)}</span></div>
+            <div class="detail-row"><span>Prev Close</span><span>$${stockData.prevClose.toFixed(2)}</span></div>
+            <div class="detail-row"><span>Day Range</span><span>$${stockData.dayRange.low.toFixed(2)} - $${stockData.dayRange.high.toFixed(2)}</span></div>
+            <div class="detail-row"><span>52W High</span><span>$${stockData.week52High.toFixed(2)}</span></div>
+            <div class="detail-row"><span>52W Low</span><span>$${stockData.week52Low.toFixed(2)}</span></div>
+          </div>
+          
+          <div>
+            <h4 style="margin-bottom: 0.8rem; color: #0a2540;">💰 Market Information</h4>
+            <div class="detail-row"><span>Market Cap</span><span>$${(stockData.marketCap/1e9).toFixed(2)}B</span></div>
+            <div class="detail-row"><span>Volume</span><span>${(stockData.volume/1e6).toFixed(2)}M</span></div>
+            <div class="detail-row"><span>Turnover</span><span>$${(stockData.turnover/1e9).toFixed(2)}B</span></div>
+            <div class="detail-row"><span>P/E Ratio</span><span>${stockData.peRatio}</span></div>
+            <div class="detail-row"><span>P/B Ratio</span><span>${stockData.pbRatio}</span></div>
+            <div class="detail-row"><span>ROE</span><span>${stockData.roe}%</span></div>
+            <div class="detail-row"><span>Dividend Yield</span><span>${stockData.dividendYield}%</span></div>
+          </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 1.5rem; padding-bottom: 1rem;">
+          <button class="hero-btn" onclick="document.getElementById('globalSymbolInput').value='${symbol}'; currentSymbol='${symbol}'; currentChartSymbol='${symbol}'; switchTab('overview'); document.getElementById('modalOverlay').classList.remove('active');">
+            <i class="fas fa-chart-line"></i> Full Analysis for ${symbol}
+          </button>
+        </div>
       </div>
     `;
     overlay.classList.add('active');
   }
 
-  // RE-ADDED: Global Functions Mapping (See All Modals)
-  window.showAllGainers = () => showModal('📈 All Gainers', getAllMarketData().filter(s=>s.change>0).sort((a,b)=>b.change-a.change),['Symbol','Name','Price','Change%']);
-  window.showAllLosers = () => showModal('📉 All Losers', getAllMarketData().filter(s=>s.change<0).sort((a,b)=>a.change-b.change),['Symbol','Name','Price','Change%']);
-  window.showAllTurnover = () => showModal('🔥 Turnover', getAllMarketData().sort((a,b)=>parseFloat(b.turnover)-parseFloat(a.turnover)),['Symbol','Name','Turnover','Volume']);
-  window.showAllVolume = () => showModal('📊 Volume', getAllMarketData().sort((a,b)=>parseFloat(b.volume)-parseFloat(a.volume)),['Symbol','Name','Volume','Turnover']);
-  window.showAllTransactions = () => showModal('💱 Transactions', getAllMarketData().sort((a,b)=>b.transactions-a.transactions),['Symbol','Name','Transactions','Volume']);
+  // Global Functions Mapping 
+  window.showAllGainers = () => showModal('📈 Top Gainers Today', getAllMarketData().filter(s=>s.change>0).sort((a,b)=>b.change-a.change),['Symbol','Name','Price','Change%']);
+  window.showAllLosers = () => showModal('📉 Top Losers Today', getAllMarketData().filter(s=>s.change<0).sort((a,b)=>a.change-b.change),['Symbol','Name','Price','Change%']);
+  window.showAllTurnover = () => showModal('🔥 Highest Turnover', getAllMarketData().sort((a,b)=>parseFloat(b.turnover)-parseFloat(a.turnover)),['Symbol','Name','Turnover','Volume']);
+  window.showAllVolume = () => showModal('📊 Highest Volume', getAllMarketData().sort((a,b)=>parseFloat(b.volume)-parseFloat(a.volume)),['Symbol','Name','Volume','Turnover']);
+  window.showAllTransactions = () => showModal('💱 Most Transactions', getAllMarketData().sort((a,b)=>b.transactions-a.transactions),['Symbol','Name','Transactions','Volume']);
   
   // Global search button handler
   document.getElementById('globalAnalyzeBtn').addEventListener('click', ()=>{
