@@ -159,11 +159,17 @@
 
   <!-- JavaScript Files (Order matters!) -->
   <script src="config.js"></script>
-  <script src="coreeventBus.js"></script>
-  <script src="corestateManager.js"></script>
-  <script src="apiService.js"></script>
-  <script src="websocket.js"></script>
-  <script src="components.js"></script>
-  <script src="app.js"></script>
+
+<!-- 2. THE EVENT BUS (MUST BE FIRST) -->
+<script src="coreeventBus.js"></script> 
+
+<!-- 3. Everything else -->
+<script src="corestateManager.js"></script>
+<script src="apiService.js"></script>
+<script src="websocket.js"></script>
+<script src="components.js"></script>
+
+<!-- 4. THE APP (MUST BE LAST) -->
+<script src="app.js"></script>
 </body>
 </html>
