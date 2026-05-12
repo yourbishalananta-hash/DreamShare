@@ -6,7 +6,7 @@ const CONFIG = {
   // API Configuration
   api: {
     baseURL: 'https://dreamstock-backend.onrender.com',
-    timeout: 90000,                    // 90 seconds (good for slow Render cold starts)
+    timeout: 30000,                    // 30 seconds
     retryAttempts: 3,
     retryDelay: 2000,                  // Added: delay between retries in ms
   },
