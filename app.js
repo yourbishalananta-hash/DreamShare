@@ -29,7 +29,7 @@ class DreamShareApp {
 
       // Show platform regardless of data load result
       this.showLoading(false);
-      document.getElementById('mainPlatform').style.display = 'flex';
+      document.getElementById('mainPlatform').style.display = 'grid';
 
       // Render the initial view (dashboard by default)
       const initialView = stateManager.get('activeView') || 'dashboard';
@@ -49,7 +49,7 @@ class DreamShareApp {
       console.error('❌ Initialization failed:', error);
       // Even on failure, show the platform so the user isn't stuck
       this.showLoading(false);
-      document.getElementById('mainPlatform').style.display = 'flex';
+      document.getElementById('mainPlatform').style.display = 'grid';
       this.showToast('Initialization had errors. Some features may not work.', 'error');
       // Still try to render dashboard
       try { await this.loadView('dashboard'); } catch (_) {}

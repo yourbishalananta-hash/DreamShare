@@ -69,7 +69,8 @@
   position: relative;
   height: 100vh;
   display: grid;
-  grid-template-rows: var(--nav-h) 1fr var(--status-h);
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: var(--nav-h) minmax(0, 1fr) var(--status-h);
   z-index: 1;
 }
 
@@ -417,10 +418,12 @@
 /* ===== Main Container ===== */
 .main-container {
   display: grid;
-  grid-template-columns: var(--sidebar-w) 1fr var(--rightpanel-w);
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr) var(--rightpanel-w);
   gap: var(--sp-3);
   padding: var(--sp-3);
   overflow: hidden;
+  min-height: 0;
+  min-width: 0;
 }
 
 /* ===== Sidebar ===== */
