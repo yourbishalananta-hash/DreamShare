@@ -55,7 +55,7 @@ class WatchlistComponent extends BaseComponent {
         <div class="card">
           <div class="card-body" style="text-align:center; padding: 3rem;">
             <i class="fas fa-star" style="font-size: 2rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
-            <h2>My Watchlist</h2>
+            <h1 class="view-title">My Watchlist</h1>
             <p style="color: var(--text-secondary); margin-top: 0.5rem;">
               You haven't added any stocks yet.<br>
               Search for a stock and add it to start tracking.
@@ -129,7 +129,7 @@ class PortfolioComponent extends BaseComponent {
 
     return `
       <div class="dashboard">
-        <div class="dashboard-header"><h2>Portfolio</h2></div>
+        <div class="dashboard-header"><h1 class="view-title">Portfolio</h1></div>
         <div class="stats-grid">
           <div class="stat-card card"><div class="card-body">
             <div class="stat-label">Available Balance</div>
@@ -178,7 +178,7 @@ class AlertsComponent extends BaseComponent {
         <div class="card">
           <div class="card-body" style="text-align:center; padding: 3rem;">
             <i class="fas fa-bell" style="font-size: 2rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
-            <h2>Price Alerts</h2>
+            <h1 class="view-title">Price Alerts</h1>
             <p style="color: var(--text-secondary); margin-top: 0.5rem;">
               No alerts set. Create one to get notified when a stock hits a target.
             </p>
@@ -204,7 +204,7 @@ class ChartsComponent extends BaseComponent {
       <div class="card">
         <div class="card-body" style="text-align:center; padding: 3rem;">
           <i class="fas fa-chart-line" style="font-size: 2rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
-          <h2>Advanced Charts</h2>
+          <h1 class="view-title">Advanced Charts</h1>
           <p style="color: var(--text-secondary); margin-top: 0.5rem;">
             Interactive charting is under development. Select a symbol from the search bar to view its details.
           </p>
@@ -221,7 +221,7 @@ class ScreenerComponent extends BaseComponent {
       <div class="card">
         <div class="card-body" style="text-align:center; padding: 3rem;">
           <i class="fas fa-filter" style="font-size: 2rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
-          <h2>Stock Screener</h2>
+          <h1 class="view-title">Stock Screener</h1>
           <p style="color: var(--text-secondary); margin-top: 0.5rem;">
             Filter the market by your own criteria — coming soon.
           </p>
@@ -238,16 +238,16 @@ class NewsComponent extends BaseComponent {
       const result = await apiService.getMarketNews('all');
       const news = (result && result.data) || [];
       if (!news.length) {
-        return `<div class="card"><div class="card-body"><h2>Market News</h2><p style="color: var(--text-secondary);">No news available right now.</p></div></div>`;
+        return `<div class="card"><div class="card-body"><h1 class="view-title">Market News</h1><p style="color: var(--text-secondary);">No news available right now.</p></div></div>`;
       }
       return `
         <div class="dashboard">
-          <div class="dashboard-header"><h2>Market News</h2></div>
+          <div class="dashboard-header"><h1 class="view-title">Market News</h1></div>
           ${news.slice(0, 10).map(n => `
             <div class="card" style="margin-bottom: 1rem;">
               <div class="card-body">
                 <h3 style="margin-bottom: 0.5rem;">
-                  ${n.url ? `<a href="${n.url}" target="_blank" rel="noopener" style="color: var(--text-primary); text-decoration: none;">${n.title}</a>` : n.title}
+                  ${n.url ? `<a href="${n.url}" target="_blank" rel="noopener" style="color: var(--text-1); text-decoration: none;">${n.title}</a>` : n.title}
                 </h3>
                 ${n.summary ? `<p style="color: var(--text-secondary); margin-bottom: 0.75rem;">${n.summary}</p>` : ''}
                 <small style="color: var(--text-muted);">${n.publisher || ''}${n.publisher && n.publishedAt ? ' · ' : ''}${n.publishedAt || ''}</small>
@@ -261,7 +261,7 @@ class NewsComponent extends BaseComponent {
         <div class="card">
           <div class="card-body" style="text-align:center; padding: 3rem;">
             <i class="fas fa-newspaper" style="font-size: 2rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
-            <h2>Market News</h2>
+            <h1 class="view-title">Market News</h1>
             <p style="color: var(--text-secondary); margin-top: 0.5rem;">
               News service unavailable.<br>
               <small>${e.message}</small>

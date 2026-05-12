@@ -24,6 +24,9 @@
   --text-2: #a4adc1;
   --text-3: #6b7488;
   --text-4: #424a5c;
+  /* Aliases used in inline styles in app / components */
+  --text-secondary: var(--text-2);
+  --text-muted: var(--text-3);
 
   /* Brand & accents */
   --accent: #00e599;

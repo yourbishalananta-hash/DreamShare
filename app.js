@@ -249,7 +249,7 @@ class DreamShareApp {
     return `
       <div class="dashboard">
         <div class="dashboard-header">
-          <h2>Market Dashboard</h2>
+          <h1 class="view-title">Market Dashboard</h1>
           <div class="dashboard-actions">
             <button class="btn btn-outline btn-sm" onclick="app.refreshData()">
               <i class="fas fa-sync-alt"></i> Refresh
@@ -477,7 +477,15 @@ class DreamShareApp {
 
   showLoading(show) {
     const el = document.getElementById('loadingOverlay');
-    if (el) el.style.display = show ? 'flex' : 'none';
+    if (el) {
+      el.style.display = show ? 'flex' : 'none';
+      el.setAttribute('aria-hidden', show ? 'false' : 'true');
+      el.setAttribute('aria-busy', show ? 'true' : 'false');
+    }
+    const main = document.getElementById('mainPlatform');
+    if (main) {
+      main.setAttribute('aria-hidden', show ? 'true' : 'false');
+    }
   }
 
   showError(message) {

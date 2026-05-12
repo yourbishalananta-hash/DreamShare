@@ -16,11 +16,11 @@
 </head>
 <body>
   <!-- Loading Screen -->
-  <div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-overlay" id="loadingOverlay" aria-busy="true" aria-live="polite">
     <div class="loading-content">
       <div class="loading-logo">
         <i class="fas fa-chart-line"></i>
-        <h1>Dream<span> Share</span></h1>
+        <p class="brand-mark brand-mark--hero">Dream<span> Share</span></p>
       </div>
       <div class="loading-progress">
         <div class="progress-bar">
@@ -32,13 +32,13 @@
   </div>
 
   <!-- Main Platform -->
-  <div class="platform" id="mainPlatform" style="display: none;">
+  <div class="platform" id="mainPlatform" style="display: none;" aria-hidden="true">
     <!-- Top Navigation Bar -->
     <nav class="top-nav glass">
       <div class="nav-left">
         <div class="logo">
           <i class="fas fa-chart-line"></i>
-          <h1>Dream<span> Share</span></h1>
+          <p class="brand-mark">Dream<span> Share</span></p>
         </div>
         <div class="market-status" id="marketStatus">
           <span class="status-indicator"></span>
