@@ -16,7 +16,16 @@ class DreamShareApp {
 
     try {
       // Register components FIRST (they're synchronous and can't fail)
-      this.registerComponents();
+      this.registerComponents() {
+    this.components = {
+        charts: new AdvancedChartsComponent('charts-container', this.stateManager, this.apiService, this.eventBus),
+        watchlist: new AdvancedWatchlistComponent('watchlist-container', this.stateManager, this.eventBus, this.apiService),
+        portfolio: new AdvancedPortfolioComponent('portfolio-container', this.stateManager, this.eventBus, this.apiService),
+        screener: new AdvancedScreenerComponent('screener-container', this.stateManager, this.eventBus),
+        dream: new DreamShareComponent('dream-container', this.stateManager),
+        news: new NewsComponent('news-container')
+    };
+}
 
       // Initialize core services (websocket is non-blocking)
       this.initializeServices();
