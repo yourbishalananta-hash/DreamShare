@@ -1,128 +1,189 @@
-/* ============================================
-   MARKETPULSE PRO - THEME VARIABLES
-   ============================================ */
+/* ============================================================
+   DreamShare — Design System
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
-  /* Primary Colors */
-  --primary-50: #e8f0fe;
-  --primary-100: #d0e1fd;
-  --primary-200: #a1c3fb;
-  --primary-300: #72a5f9;
-  --primary-400: #4387f7;
-  --primary-500: #1469f5;
-  --primary-600: #1054c4;
-  --primary-700: #0c3f93;
-  --primary-800: #082a62;
-  --primary-900: #041531;
-  
-  /* Neutral Colors */
-  --neutral-50: #f8fafc;
-  --neutral-100: #f1f5f9;
-  --neutral-200: #e2e8f0;
-  --neutral-300: #cbd5e1;
-  --neutral-400: #94a3b8;
-  --neutral-500: #64748b;
-  --neutral-600: #475569;
-  --neutral-700: #334155;
-  --neutral-800: #1e293b;
-  --neutral-900: #0f172a;
-  
-  /* Surface Colors (for cards, modals, etc.) */
-  --surface-primary: #ffffff;
-  --surface-secondary: #f8fafc;
-  --surface-hover: #f1f5f9;
-  
-  /* Border Colors */
-  --border-primary: #e2e8f0;
-  --border-secondary: #f1f5f9;
-  
-  /* Semantic Colors */
-  --success: #10b981;
-  --success-light: #d1fae5;
-  --success-dark: #059669;
-  
-  --danger: #ef4444;
-  --danger-light: #fee2e2;
-  --danger-dark: #dc2626;
-  
-  --warning: #f59e0b;
-  --warning-light: #fef3c7;
-  --warning-dark: #d97706;
-  
-  --info: #3b82f6;
-  --info-light: #dbeafe;
-  --info-dark: #2563eb;
-  
-  /* Typography */
-  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  
-  /* Spacing */
-  --spacing-xs: 0.25rem;
-  --spacing-sm: 0.5rem;
-  --spacing-md: 1rem;
-  --spacing-lg: 1.5rem;
-  --spacing-xl: 2rem;
-  
-  /* Border Radius */
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
-  --radius-full: 9999px;
-  
+  /* Surfaces */
+  --bg-base: #06070b;
+  --bg-sub: #0a0d14;
+  --surface-1: rgba(20, 24, 34, 0.55);
+  --surface-2: rgba(28, 33, 47, 0.65);
+  --surface-3: rgba(38, 44, 60, 0.75);
+  --surface-solid: #11151f;
+
+  /* Borders & dividers */
+  --border-1: rgba(255, 255, 255, 0.06);
+  --border-2: rgba(255, 255, 255, 0.10);
+  --border-glow: rgba(0, 229, 153, 0.20);
+  --divider: rgba(255, 255, 255, 0.04);
+
+  /* Text */
+  --text-1: #ecf0f6;
+  --text-2: #a4adc1;
+  --text-3: #6b7488;
+  --text-4: #424a5c;
+
+  /* Brand & accents */
+  --accent: #00e599;
+  --accent-dim: #00b378;
+  --accent-soft: rgba(0, 229, 153, 0.12);
+  --info: #4ea2ff;
+  --warn: #ffb020;
+  --danger: #ff3860;
+  --positive: #00e599;
+  --negative: #ff4d6d;
+
+  /* Gradients */
+  --grad-brand: linear-gradient(135deg, #00e599 0%, #4ea2ff 100%);
+  --grad-brand-soft: linear-gradient(135deg, rgba(0,229,153,.15), rgba(78,162,255,.15));
+  --grad-positive: linear-gradient(180deg, rgba(0,229,153,.18), rgba(0,229,153,0));
+  --grad-negative: linear-gradient(180deg, rgba(255,77,109,.18), rgba(255,77,109,0));
+  --grad-card: linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,0));
+
   /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-  
-  /* Transitions */
-  --transition-fast: 150ms ease;
-  --transition-base: 200ms ease;
-  --transition-slow: 300ms ease;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
+  --shadow-md: 0 4px 16px rgba(0,0,0,.35), 0 1px 2px rgba(0,0,0,.5);
+  --shadow-lg: 0 12px 48px rgba(0,0,0,.5), 0 4px 12px rgba(0,0,0,.35);
+  --shadow-glow: 0 0 24px rgba(0,229,153,.25);
+
+  /* Radius */
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+  --r-pill: 999px;
+
+  /* Spacing scale */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+
+  /* Typography */
+  --font-ui: 'Geist', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Roboto Mono', Consolas, monospace;
+  --fz-xs: 11px;
+  --fz-sm: 12px;
+  --fz-md: 13px;
+  --fz-base: 14px;
+  --fz-lg: 16px;
+  --fz-xl: 20px;
+  --fz-2xl: 26px;
+  --fz-3xl: 34px;
+
+  /* Motion */
+  --ease: cubic-bezier(.2,.7,.2,1);
+  --ease-spring: cubic-bezier(.34,1.56,.64,1);
+  --dur-fast: 120ms;
+  --dur-base: 220ms;
+  --dur-slow: 420ms;
+
+  /* Layout */
+  --nav-h: 60px;
+  --status-h: 32px;
+  --sidebar-w: 240px;
+  --rightpanel-w: 320px;
 }
 
-/* Dark Theme */
-[data-theme="dark"] {
-  /* Neutral Colors - Inverted */
-  --neutral-50: #0f172a;
-  --neutral-100: #1e293b;
-  --neutral-200: #334155;
-  --neutral-300: #475569;
-  --neutral-400: #64748b;
-  --neutral-500: #94a3b8;
-  --neutral-600: #cbd5e1;
-  --neutral-700: #e2e8f0;
-  --neutral-800: #f1f5f9;
-  --neutral-900: #f8fafc;
-  
-  /* Surface Colors - Dark */
-  --surface-primary: #1e293b;
-  --surface-secondary: #0f172a;
-  --surface-hover: #334155;
-  
-  /* Border Colors - Dark */
-  --border-primary: #334155;
-  --border-secondary: #1e293b;
-  
-  /* Semantic Colors - Adjusted for dark mode */
-  --success-light: rgba(16, 185, 129, 0.15);
-  --danger-light: rgba(239, 68, 68, 0.15);
-  --warning-light: rgba(245, 158, 11, 0.15);
-  --info-light: rgba(59, 130, 246, 0.15);
-}
+/* ============================================================
+   Reset & Base
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* CSS Reset */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: var(--font-family);
+html, body {
+  height: 100%;
+  background: var(--bg-base);
+  color: var(--text-1);
+  font-family: var(--font-ui);
+  font-size: var(--fz-base);
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
 }
 
 body {
-  background: linear-gradient(135deg, var(--neutral-100) 0%, var(--neutral-200) 100%);
-  min-height: 100vh;
-  color: var(--neutral-800);
-  transition: background 0.3s ease, color 0.3s ease;
+  position: relative;
+  background:
+    radial-gradient(1200px 800px at 15% -10%, rgba(0,229,153,.07), transparent 60%),
+    radial-gradient(900px 700px at 95% 110%, rgba(78,162,255,.06), transparent 55%),
+    var(--bg-base);
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1   0 0 0 0 1   0 0 0 0 1   0 0 0 .04 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  opacity: .6;
+  mix-blend-mode: overlay;
+  z-index: 0;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  outline: none;
+}
+button { cursor: pointer; user-select: none; }
+
+ul, ol { list-style: none; }
+a { color: inherit; text-decoration: none; }
+img, svg { display: block; max-width: 100%; }
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,.06); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.12); }
+
+/* Typography helpers */
+.mono, .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--fz-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-3);
+}
+
+/* Selection */
+::selection { background: var(--accent-soft); color: var(--text-1); }
+
+/* Utility */
+.positive { color: var(--positive) !important; }
+.negative { color: var(--negative) !important; }
+.muted { color: var(--text-3) !important; }
+.dim { color: var(--text-2) !important; }
+
+.hidden { display: none !important; }
+
+/* Glass effect */
+.glass {
+  background: var(--surface-1);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid var(--border-1);
+  background-image: var(--grad-card);
+}
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-xs);
 }
