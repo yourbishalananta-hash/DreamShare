@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
-  <title>Dream Share • Trading platform</title>
+  <title>MarketPulse Pro • Advanced Trading Platform</title>
 
-  <!-- CSS Files (only the ones that actually exist) -->
+  <!-- CSS Files (paths fixed to repo root) -->
   <link rel="stylesheet" href="themes.css">
-<link rel="stylesheet" href="components.css">
+  <link rel="stylesheet" href="components.css">
 
   <!-- External Libraries -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -15,30 +15,32 @@
   <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
+
   <!-- Loading Screen -->
-  <div class="loading-overlay" id="loadingOverlay" aria-busy="true" aria-live="polite">
+  <div class="loading-overlay" id="loadingOverlay">
     <div class="loading-content">
       <div class="loading-logo">
         <i class="fas fa-chart-line"></i>
-        <p class="brand-mark brand-mark--hero">Dream<span> Share</span></p>
+        <h1>Market<span>Pulse Pro</span></h1>
       </div>
       <div class="loading-progress">
         <div class="progress-bar">
           <div class="progress-fill" id="progressFill"></div>
         </div>
-        <p id="loadingMessage">Initializing Dream Share…</p>
+        <p id="loadingMessage">Initializing platform...</p>
       </div>
     </div>
   </div>
 
   <!-- Main Platform -->
-  <div class="platform" id="mainPlatform" style="display: none;" aria-hidden="true">
+  <div class="platform" id="mainPlatform" style="display: none;">
+
     <!-- Top Navigation Bar -->
     <nav class="top-nav glass">
       <div class="nav-left">
         <div class="logo">
           <i class="fas fa-chart-line"></i>
-          <p class="brand-mark">Dream<span> Share</span></p>
+          <h1>Market<span>Pulse Pro</span></h1>
         </div>
         <div class="market-status" id="marketStatus">
           <span class="status-indicator"></span>
@@ -85,6 +87,7 @@
 
     <!-- Main Content Area -->
     <div class="main-container">
+
       <!-- Sidebar -->
       <aside class="sidebar glass" id="sidebar">
         <div class="sidebar-section">
@@ -209,14 +212,13 @@
   <!-- Toast Notifications -->
   <div class="toast-container" id="toastContainer"></div>
 
-  <!-- JavaScript Files (Order matters!) -->
-  <!-- Only files that actually exist are referenced -->
+  <!-- JavaScript Files (Order matters! - paths fixed to repo root) -->
   <script src="config.js"></script>
-<script src="coreeventBus.js"></script>
-<script src="corestateManager.js"></script>
-<script src="apiService.js"></script>
-<script src="websocket.js"></script>
-<script src="components.js"></script>
-<script src="app.js"></script>
+  <script src="coreeventBus.js"></script>
+  <script src="corestateManager.js"></script>
+  <script src="apiService.js"></script>
+  <script src="websocket.js"></script>
+  <script src="components.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
