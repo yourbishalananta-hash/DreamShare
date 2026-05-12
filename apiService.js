@@ -1,12 +1,17 @@
-// apiService.js - Handles all API calls for Dream Share (Indian Market Focus)
+// apiService.js - Connects to MarketPulse Pro Enterprise API (FastAPI)
+
+const API_BASE_URL = 'https://dreamstock-backend.onrender.com';  // Change to your backend URL
 
 class ApiService {
-    constructor(baseURL = '/api') {
-        this.baseURL = baseURL;
+    constructor() {
+        this.ws = null;
+        this.wsCallbacks = [];
     }
 
+    // ========== REST API Methods ==========
+
     async request(endpoint, options = {}) {
-        const url = `${this.baseURL}${endpoint}`;
+        const url = `${API_BASE_URL}${endpoint}`;
         const response = await fetch(url, {
             headers: { 'Content-Type': 'application/json' },
             ...options
@@ -17,77 +22,116 @@ class ApiService {
         return response.json();
     }
 
-    // Dream-related endpoints
-    async getDreams() {
-        return this.request('/dreams');
+    /**
+     * Get historical OHLC data for a symbol.
+     * @param {string} symbol - Stock symbol (e.g., "RELIANCE") or index symbol (e.g., "^NSEI")
+     * @param {object} params - { from, to, interval, limit } (optional)
+     * @returns {Promise<Array>} Array of { timestamp, open, high, low, close, volume }
+     */
+    async getHistoricalData(symbol, params = {}) {
+        // Map common indices to Yahoo Finance symbols
+        let yfSymbol = symbol;
+        if (symbol === 'NIFTY 50' || symbol === 'NIFTY50') yfSymbol = '^NSEI';
+        if (symbol === 'SENSEX') yfSymbol = '^BSESN';
+        
+        // Translate our timeframe to Yahoo Finance period/interval
+        let period = '1y';   // default
+        let interval = '1d';
+        if (params.limit) {
+            // Use limit to guess period: small limit -> shorter period
+            if (params.limit <= 100) period = '1mo';
+            if (params.limit <= 30) period = '5d';
+            if (params.limit <= 10) period = '1d';
+        }
+        // Override with explicit interval from params
+        if (params.interval) interval = params.interval;
+        
+        const url = `/stocks/${encodeURIComponent(yfSymbol)}/history?period=${period}&interval=${interval}`;
+        const data = await this.request(url);
+        
+        // Transform backend response to our expected format
+        if (Array.isArray(data)) {
+            return data.map(item => ({
+                timestamp: item.Date,
+                open: item.Open,
+                high: item.High,
+                low: item.Low,
+                close: item.Close,
+                volume: item.Volume
+            }));
+        }
+        return [];
     }
 
-    async createDream(dreamData) {
-        return this.request('/dreams', {
-            method: 'POST',
-            body: JSON.stringify(dreamData)
-        });
-    }
-
-    // Market data endpoints
-    async getHistoricalData(symbol, params) {
-        console.log(`Fetching historical data for ${symbol}`, params);
-        // Replace with real API call to Indian data source
-        return this.generateMockData(symbol, params);
-    }
-
+    /**
+     * Get real-time quote for a single symbol (uses REST, but we'll use WebSocket for live)
+     */
     async getRealtimeQuote(symbol) {
-        // Mock quote for Indian market
-        return {
-            symbol,
-            price: Math.random() * 5000 + 100,  // Indian stock/index range
-            change: (Math.random() - 0.5) * 100,
-            timestamp: new Date().toISOString()
+        // Can use /stocks/all?page=1&limit=500 and filter, but better via WebSocket
+        const all = await this.request('/stocks/all?page=1&limit=500');
+        const found = all.data.find(s => s.symbol === symbol);
+        if (found) {
+            return {
+                symbol: found.symbol,
+                price: found.ltp,
+                change: found.change,
+                volume: found.volume,
+                timestamp: found.timestamp
+            };
+        }
+        return null;
+    }
+
+    /**
+     * Get paginated list of all stocks (for screener / watchlist)
+     */
+    async getAllStocks(page = 1, limit = 50) {
+        return this.request(`/stocks/all?page=${page}&limit=${limit}`);
+    }
+
+    /**
+     * Get fundamentals (P/E, market cap, etc.)
+     */
+    async getFundamentals(symbol) {
+        let yfSymbol = symbol;
+        if (symbol === 'NIFTY 50' || symbol === 'NIFTY50') yfSymbol = '^NSEI';
+        if (symbol === 'SENSEX') yfSymbol = '^BSESN';
+        return this.request(`/stocks/${encodeURIComponent(yfSymbol)}/fundamentals`);
+    }
+
+    // ========== WebSocket Live Updates ==========
+
+    connectWebSocket(onMessageCallback) {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
+        
+        this.ws = new WebSocket(`ws://localhost:8000/ws`);
+        this.ws.onopen = () => console.log('WebSocket connected');
+        this.ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'MARKET_UPDATE' && data.data) {
+                // data.data is an object keyed by ticker (e.g., "RELIANCE.NS")
+                // Convert to symbol -> ltp mapping
+                const quotes = {};
+                Object.keys(data.data).forEach(ticker => {
+                    const stock = data.data[ticker];
+                    quotes[stock.symbol] = stock;
+                });
+                if (onMessageCallback) onMessageCallback(quotes);
+            }
+        };
+        this.ws.onerror = (err) => console.error('WebSocket error', err);
+        this.ws.onclose = () => {
+            console.log('WebSocket closed, reconnecting in 5s...');
+            setTimeout(() => this.connectWebSocket(onMessageCallback), 5000);
         };
     }
 
-    generateMockData(symbol, { from, to, interval, limit = 100 }) {
-        const data = [];
-        const startTime = new Date(from || Date.now() - 30 * 24 * 60 * 60 * 1000);
-        const endTime = new Date(to || Date.now());
-        const step = (endTime - startTime) / limit;
-        
-        // No hardcoded symbols – generate generic Indian market data
-        // Use a seed based on symbol name to get consistent fake prices
-        let seed = 0;
-        for (let i = 0; i < symbol.length; i++) {
-            seed += symbol.charCodeAt(i);
-        }
-        const random = (min, max) => min + (Math.sin(seed) * 0.5 + 0.5) * (max - min);
-        
-        // Choose a sensible base price range based on symbol type (index vs stock)
-        let basePrice;
-        const upperSymbol = symbol.toUpperCase();
-        if (upperSymbol.includes('NIFTY') || upperSymbol.includes('SENSEX')) {
-            basePrice = random(15000, 25000); // Index range (15k–25k)
-        } else {
-            basePrice = random(100, 5000);     // Stock range
-        }
-        
-        for (let i = 0; i <= limit; i++) {
-            const timestamp = new Date(startTime.getTime() + i * step);
-            // Simulate realistic movement
-            const trend = Math.sin(i * 0.05) * (basePrice * 0.02);
-            const noise = (Math.random() - 0.5) * (basePrice * 0.01);
-            const close = basePrice + trend + noise;
-            data.push({
-                timestamp: timestamp.toISOString(),
-                open: close - Math.random() * (basePrice * 0.01),
-                high: close + Math.random() * (basePrice * 0.015),
-                low: close - Math.random() * (basePrice * 0.015),
-                close: close,
-                volume: Math.random() * 10000000
+    subscribeToQuotes(callback) {
+        this.wsCallbacks.push(callback);
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+            this.connectWebSocket((quotes) => {
+                this.wsCallbacks.forEach(cb => cb(quotes));
             });
         }
-        return data;
     }
-}
-
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = ApiService;
 }
