@@ -4,14 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
   <title>MarketPulse Pro • Advanced Trading Platform</title>
-  
-  <!-- CSS Files -->
-  <link rel="stylesheet" href="themes.css">
-  <link rel="stylesheet" href="components.css">
-  
+
+  <!-- CSS Files (only the ones that actually exist) -->
+  <link rel="stylesheet" href="css/themes.css">
+  <link rel="stylesheet" href="css/components.css">
+
   <!-- External Libraries -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
   <!-- Loading Screen -->
@@ -40,16 +41,16 @@
           <h1>Market<span>Pulse Pro</span></h1>
         </div>
         <div class="market-status" id="marketStatus">
-          <span class="status-indicator closed"></span>
+          <span class="status-indicator"></span>
           <span class="status-text">Market Closed</span>
         </div>
       </div>
-      
+
       <div class="nav-center">
         <div class="global-search-wrapper">
           <div class="search-container">
             <i class="fas fa-search search-icon"></i>
-            <input type="text" id="globalSearch" placeholder="Search NSE stocks..." autocomplete="off">
+            <input type="text" id="globalSearch" placeholder="Search stocks, indices, ETFs..." autocomplete="off">
             <button class="search-clear" id="searchClear" style="display: none;">
               <i class="fas fa-times"></i>
             </button>
@@ -57,14 +58,22 @@
           <div class="search-results" id="searchResults"></div>
         </div>
       </div>
-      
+
       <div class="nav-right">
         <div class="nav-actions">
-          <button class="nav-btn" id="btnRefresh" title="Refresh Data">
-            <i class="fas fa-sync-alt"></i>
+          <button class="nav-btn" id="btnWatchlist" title="Watchlist">
+            <i class="fas fa-star"></i>
+            <span class="badge" id="watchlistCount">0</span>
           </button>
-          <button class="nav-btn" id="btnTheme" title="Toggle Theme">
-            <i class="fas fa-moon"></i>
+          <button class="nav-btn" id="btnAlerts" title="Alerts">
+            <i class="fas fa-bell"></i>
+            <span class="badge" id="alertsCount">0</span>
+          </button>
+          <button class="nav-btn" id="btnPortfolio" title="Portfolio">
+            <i class="fas fa-briefcase"></i>
+          </button>
+          <button class="nav-btn" id="btnSettings" title="Settings">
+            <i class="fas fa-cog"></i>
           </button>
           <div class="user-profile">
             <div class="avatar">U</div>
@@ -84,15 +93,19 @@
             <li class="menu-item active" data-view="dashboard">
               <i class="fas fa-th-large"></i> Dashboard
             </li>
-            <li class="menu-item" data-view="marketwatch">
-              <i class="fas fa-globe"></i> Market Watch
-            </li>
             <li class="menu-item" data-view="watchlist">
               <i class="fas fa-star"></i> Watchlist
+              <span class="menu-badge" id="sidebarWatchlistCount">0</span>
+            </li>
+            <li class="menu-item" data-view="portfolio">
+              <i class="fas fa-briefcase"></i> Portfolio
+            </li>
+            <li class="menu-item" data-view="orders">
+              <i class="fas fa-exchange-alt"></i> Orders
             </li>
           </ul>
         </div>
-        
+
         <div class="sidebar-section">
           <h3 class="sidebar-title">ANALYSIS</h3>
           <ul class="sidebar-menu">
@@ -102,24 +115,51 @@
             <li class="menu-item" data-view="screener">
               <i class="fas fa-filter"></i> Screener
             </li>
-            <li class="menu-item" data-view="compare">
-              <i class="fas fa-balance-scale"></i> Compare
+            <li class="menu-item" data-view="technical">
+              <i class="fas fa-chart-bar"></i> Technical
+            </li>
+            <li class="menu-item" data-view="fundamental">
+              <i class="fas fa-file-invoice"></i> Fundamental
             </li>
           </ul>
         </div>
-        
+
+        <div class="sidebar-section">
+          <h3 class="sidebar-title">TOOLS</h3>
+          <ul class="sidebar-menu">
+            <li class="menu-item" data-view="compare">
+              <i class="fas fa-balance-scale"></i> Compare
+            </li>
+            <li class="menu-item" data-view="heatmap">
+              <i class="fas fa-th"></i> Heatmap
+            </li>
+            <li class="menu-item" data-view="alerts">
+              <i class="fas fa-bell"></i> Alerts
+              <span class="menu-badge" id="sidebarAlertsCount">0</span>
+            </li>
+            <li class="menu-item" data-view="news">
+              <i class="fas fa-newspaper"></i> News
+            </li>
+          </ul>
+        </div>
+
         <div class="sidebar-section">
           <h3 class="sidebar-title">INDICES</h3>
           <div class="indices-list" id="indicesList">
             <div class="index-item">
               <span class="index-name">NIFTY 50</span>
-              <span class="index-value" id="niftyValue">--</span>
-              <span class="index-change" id="niftyChange">--</span>
+              <span class="index-value positive">22,513.70</span>
+              <span class="index-change positive">+0.45%</span>
             </div>
             <div class="index-item">
               <span class="index-name">SENSEX</span>
-              <span class="index-value" id="sensexValue">--</span>
-              <span class="index-change" id="sensexChange">--</span>
+              <span class="index-value positive">74,119.39</span>
+              <span class="index-change positive">+0.52%</span>
+            </div>
+            <div class="index-item">
+              <span class="index-name">BANK NIFTY</span>
+              <span class="index-value negative">48,012.15</span>
+              <span class="index-change negative">-0.32%</span>
             </div>
           </div>
         </div>
@@ -129,22 +169,34 @@
       <main class="content-area" id="contentArea">
         <!-- Dynamic content loaded here -->
       </main>
+
+      <!-- Right Panel (Watchlist, Orders, etc.) -->
+      <aside class="right-panel glass" id="rightPanel">
+        <div class="panel-tabs">
+          <button class="panel-tab active" data-panel="watchlist">Watchlist</button>
+          <button class="panel-tab" data-panel="positions">Positions</button>
+          <button class="panel-tab" data-panel="orders">Orders</button>
+        </div>
+        <div class="panel-content" id="panelContent">
+          <!-- Watchlist items loaded here -->
+        </div>
+      </aside>
     </div>
 
     <!-- Bottom Status Bar -->
     <footer class="status-bar glass">
       <div class="status-left">
         <span id="connectionStatus">
-          <i class="fas fa-circle"></i> Connecting...
+          <i class="fas fa-circle disconnected"></i> Disconnected
         </span>
         <span id="lastUpdated">Last updated: --</span>
       </div>
       <div class="status-center">
-        <span id="marketTime">--</span>
+        <span id="marketTime">Market opens in: --</span>
       </div>
       <div class="status-right">
-        <span id="stockCount">Stocks: 0</span>
         <span>Data: NSE/BSE</span>
+        <span>Delay: Real-time</span>
       </div>
     </footer>
   </div>
@@ -158,18 +210,13 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- JavaScript Files (Order matters!) -->
-  <script src="config.js"></script>
-
-<!-- 2. THE EVENT BUS (MUST BE FIRST) -->
-<script src="coreeventBus.js"></script> 
-
-<!-- 3. Everything else -->
-<script src="corestateManager.js"></script>
-<script src="apiService.js"></script>
-<script src="websocket.js"></script>
-<script src="components.js"></script>
-
-<!-- 4. THE APP (MUST BE LAST) -->
-<script src="app.js"></script>
+  <!-- Only files that actually exist are referenced -->
+  <script src="js/config.js"></script>
+  <script src="js/core/eventBus.js"></script>
+  <script src="js/core/stateManager.js"></script>
+  <script src="js/api/apiService.js"></script>
+  <script src="js/api/websocket.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
