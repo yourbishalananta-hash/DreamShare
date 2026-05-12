@@ -1,7 +1,6 @@
 // ============================================
 // DREAM SHARE - WEBSOCKET SERVICE
 // ============================================
-
 class WebSocketService {
   constructor() {
     this.socket = null;
@@ -16,7 +15,6 @@ class WebSocketService {
     }
 
     console.log('🔌 Connecting to WebSocket...');
-
     try {
       this.socket = new WebSocket(CONFIG.websocket.url);
     } catch (e) {
@@ -35,8 +33,14 @@ class WebSocketService {
       try {
         const data = JSON.parse(event.data);
         if (data && data.data) {
-          stateManager.set('stocks', data.data);
-          eventBus.emit(EventBus.Events.MARKET_DATA_UPDATED, data.data);
+          // Backend sends `data.data` as an object keyed by ticker
+          // (e.g. {"RELIANCE.NS": {...}, "TCS.NS": {...}}). The rest of
+          // the app expects an array, so normalize here.
+          const stocksArray = Array.isArray(data.data)
+            ? data.data
+            : Object.values(data.data);
+          stateManager.set('stocks', stocksArray);
+          eventBus.emit(EventBus.Events.MARKET_DATA_UPDATED, stocksArray);
         }
       } catch (e) {
         console.error('WS Message Error:', e);
@@ -50,7 +54,6 @@ class WebSocketService {
 
     this.socket.onerror = (error) => {
       // Don't call close() here — onclose will fire automatically on errors.
-      // Calling close() during an errored connection can cause unexpected state.
       console.warn('WebSocket error (will attempt reconnect):', error.message || 'connection failed');
     };
   }
@@ -62,7 +65,6 @@ class WebSocketService {
       return;
     }
     this.reconnectAttempts++;
-    // Exponential backoff capped at 60s
     const delay = Math.min(
       CONFIG.websocket.reconnectInterval * Math.pow(1.5, this.reconnectAttempts - 1),
       60000
@@ -93,3 +95,4 @@ class WebSocketService {
 }
 
 const webSocketService = new WebSocketService();
+window.webSocketService = webSocketService;
