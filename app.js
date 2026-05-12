@@ -10,24 +10,11 @@ class DreamShareApp {
 
   async initialize() {
     if (this.initialized) return;
-
     console.log('🚀 Initializing Dream Share...');
     this.showLoading(true);
 
     try {
-      // Register components FIRST (they're synchronous and can't fail)
-      this.registerComponents() {
-    this.components = {
-        charts: new AdvancedChartsComponent('charts-container', this.stateManager, this.apiService, this.eventBus),
-        watchlist: new AdvancedWatchlistComponent('watchlist-container', this.stateManager, this.eventBus, this.apiService),
-        portfolio: new AdvancedPortfolioComponent('portfolio-container', this.stateManager, this.eventBus, this.apiService),
-        screener: new AdvancedScreenerComponent('screener-container', this.stateManager, this.eventBus),
-        dream: new DreamShareComponent('dream-container', this.stateManager),
-        news: new NewsComponent('news-container')
-    };
-}
-
-      // Initialize core services (websocket is non-blocking)
+      // Initialize core services first (websocket is non-blocking)
       this.initializeServices();
 
       // Set up event listeners
@@ -58,7 +45,8 @@ class DreamShareApp {
       console.error('❌ Initialization failed:', error);
       // Even on failure, show the platform so the user isn't stuck
       this.showLoading(false);
-      document.getElementById('mainPlatform').style.display = 'grid';
+      const main = document.getElementById('mainPlatform');
+      if (main) main.style.display = 'grid';
       this.showToast('Initialization had errors. Some features may not work.', 'error');
       // Still try to render dashboard
       try { await this.loadView('dashboard'); } catch (_) {}
@@ -67,7 +55,8 @@ class DreamShareApp {
 
   initializeServices() {
     // Connect to WebSocket for real-time updates (non-blocking)
-    if (CONFIG.features.realTimeUpdates && typeof webSocketService !== 'undefined') {
+    if (typeof CONFIG !== 'undefined' && CONFIG.features && CONFIG.features.realTimeUpdates
+        && typeof webSocketService !== 'undefined') {
       try {
         webSocketService.connect();
       } catch (e) {
@@ -77,26 +66,6 @@ class DreamShareApp {
 
     // Subscribe to events
     this.setupEventSubscriptions();
-  }
-
-  registerComponents() {
-    this.components = {
-      charts:    new ChartsComponent(),
-      screener:  new ScreenerComponent(),
-      watchlist: new WatchlistComponent(),
-      portfolio: new PortfolioComponent(),
-      alerts:    new AlertsComponent(),
-      news:      new NewsComponent(),
-    };
-
-    // Init each component safely
-    Object.entries(this.components).forEach(([name, comp]) => {
-      try {
-        if (typeof comp.init === 'function') comp.init();
-      } catch (e) {
-        console.warn(`Component ${name} init failed:`, e.message);
-      }
-    });
   }
 
   setupEventListeners() {
@@ -118,17 +87,18 @@ class DreamShareApp {
     const searchClear = document.getElementById('searchClear');
     if (searchClear) {
       searchClear.addEventListener('click', () => {
-        searchInput.value = '';
-        document.getElementById('searchResults').classList.remove('active');
+        if (searchInput) searchInput.value = '';
+        const sr = document.getElementById('searchResults');
+        if (sr) sr.classList.remove('active');
         searchClear.style.display = 'none';
       });
     }
 
     // Navigation buttons
     this.safeBind('btnWatchlist', () => this.navigateTo('watchlist'));
-    this.safeBind('btnAlerts',    () => this.navigateTo('alerts'));
+    this.safeBind('btnAlerts', () => this.navigateTo('alerts'));
     this.safeBind('btnPortfolio', () => this.navigateTo('portfolio'));
-    this.safeBind('btnSettings',  () => this.openSettings());
+    this.safeBind('btnSettings', () => this.openSettings());
 
     // Panel tabs
     document.querySelectorAll('.panel-tab').forEach(tab => {
@@ -147,6 +117,8 @@ class DreamShareApp {
   }
 
   setupEventSubscriptions() {
+    if (typeof eventBus === 'undefined' || typeof EventBus === 'undefined') return;
+
     eventBus.on(EventBus.Events.MARKET_DATA_UPDATED, (data) => {
       // Refresh dashboard if it's the active view
       if (stateManager.get('activeView') === 'dashboard') {
@@ -174,6 +146,11 @@ class DreamShareApp {
   async loadInitialData() {
     // Load market data — non-fatal if it fails
     try {
+      if (typeof apiService === 'undefined') {
+        console.warn('apiService not available');
+        stateManager.set('stocks', []);
+        return;
+      }
       const marketData = await apiService.getMarketWatch();
       stateManager.set('stocks', (marketData && marketData.data) || []);
       console.log(`📊 Loaded ${stateManager.get('stocks').length} stocks`);
@@ -181,18 +158,6 @@ class DreamShareApp {
       console.warn('⚠️ Market data unavailable:', error.message);
       stateManager.set('stocks', []);
       this.showToast('Backend unreachable. Running in offline mode.', 'warning');
-    }
-
-    // Safely call component data loaders if they exist
-    this.safeCall(this.components.watchlist, 'loadWatchlist');
-    this.safeCall(this.components.portfolio, 'loadPortfolio');
-    this.safeCall(this.components.alerts,    'loadAlerts');
-  }
-
-  safeCall(obj, method, ...args) {
-    if (obj && typeof obj[method] === 'function') {
-      try { return obj[method](...args); }
-      catch (e) { console.warn(`${method} failed:`, e.message); }
     }
   }
 
@@ -207,7 +172,9 @@ class DreamShareApp {
     // Load view content
     this.loadView(view);
 
-    eventBus.emit(EventBus.Events.VIEW_CHANGED, view);
+    if (typeof eventBus !== 'undefined' && typeof EventBus !== 'undefined') {
+      eventBus.emit(EventBus.Events.VIEW_CHANGED, view);
+    }
   }
 
   async loadView(view) {
@@ -215,37 +182,99 @@ class DreamShareApp {
     if (!contentArea) return;
 
     try {
-      let html = '';
       switch (view) {
         case 'dashboard':
-          html = this.renderDashboard();
+          contentArea.innerHTML = this.renderDashboard();
           break;
-        case 'watchlist':
-          html = this.components.watchlist.render();
+
+        case 'charts': {
+          contentArea.innerHTML = '<div id="charts-container"></div>';
+          if (typeof ChartsComponent !== 'undefined') {
+            this.components.charts = new ChartsComponent('charts-container', stateManager, apiService);
+            this.components.charts.render();
+          }
           break;
-        case 'charts':
-          html = this.components.charts.render();
+        }
+
+        case 'watchlist': {
+          contentArea.innerHTML = '<div id="watchlist-container"></div>';
+          if (typeof WatchlistComponent !== 'undefined') {
+            this.components.watchlist = new WatchlistComponent('watchlist-container', stateManager);
+            this.components.watchlist.render();
+          }
           break;
-        case 'screener':
-          html = this.components.screener.render();
+        }
+
+        case 'portfolio': {
+          contentArea.innerHTML = '<div id="portfolio-container"></div>';
+          if (typeof PortfolioComponent !== 'undefined') {
+            this.components.portfolio = new PortfolioComponent('portfolio-container', stateManager);
+            this.components.portfolio.render();
+          }
           break;
-        case 'portfolio':
-          html = this.components.portfolio.render();
+        }
+
+        case 'news': {
+          contentArea.innerHTML = '<div id="news-container"></div>';
+          if (typeof NewsComponent !== 'undefined') {
+            this.components.news = new NewsComponent('news-container');
+            this.components.news.render();
+          }
           break;
-        case 'alerts':
-          html = this.components.alerts.render();
+        }
+
+        case 'screener': {
+          contentArea.innerHTML = '<div id="screener-container"></div>';
+          if (typeof ScreenerComponent !== 'undefined') {
+            this.components.screener = new ScreenerComponent('screener-container', stateManager);
+            this.components.screener.render();
+          }
           break;
-        case 'news':
-          html = await this.components.news.render();
+        }
+
+        case 'alerts': {
+          contentArea.innerHTML = '<div id="alerts-container"></div>';
+          if (typeof AlertsComponent !== 'undefined') {
+            this.components.alerts = new AlertsComponent('alerts-container', stateManager);
+            this.components.alerts.render();
+          }
           break;
+        }
+
+        case 'orders':
+        case 'technical':
+        case 'fundamental':
+        case 'compare':
+        case 'heatmap':
+          contentArea.innerHTML = this.renderComingSoon(view);
+          break;
+
         default:
-          html = `<div class="card"><div class="card-body"><h2>${this.titleCase(view)}</h2><p>This view is under construction.</p></div></div>`;
+          contentArea.innerHTML = this.renderComingSoon(view);
       }
-      contentArea.innerHTML = html;
     } catch (error) {
       console.error(`Error loading view ${view}:`, error);
-      contentArea.innerHTML = `<div class="card"><div class="card-body"><h2>Error</h2><p>Failed to load ${view}.</p></div></div>`;
+      contentArea.innerHTML = `
+        <div class="card">
+          <div class="card-body">
+            <h2>Error</h2>
+            <p>Failed to load ${view}.</p>
+          </div>
+        </div>`;
     }
+  }
+
+  renderComingSoon(view) {
+    return `
+      <div class="card">
+        <div class="card-body" style="text-align:center; padding: 3rem;">
+          <i class="fas fa-tools" style="font-size: 2rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
+          <h2>${this.titleCase(view)}</h2>
+          <p style="color: var(--text-secondary); margin-top: 0.5rem;">
+            This view is under construction.
+          </p>
+        </div>
+      </div>`;
   }
 
   titleCase(s) {
@@ -254,79 +283,70 @@ class DreamShareApp {
 
   renderDashboard() {
     const stocks = stateManager.get('stocks') || [];
+    const baseURL = (typeof CONFIG !== 'undefined' && CONFIG.api && CONFIG.api.baseURL) || '';
 
     return `
-      <div class="dashboard">
-        <div class="dashboard-header">
-          <h1 class="view-title">Market Dashboard</h1>
-          <div class="dashboard-actions">
-            <button class="btn btn-outline btn-sm" onclick="app.refreshData()">
-              <i class="fas fa-sync-alt"></i> Refresh
-            </button>
-          </div>
-        </div>
+<div class="dashboard">
+  <div class="dashboard-header">
+    <h1 class="view-title">Market Dashboard</h1>
+    <div class="dashboard-actions">
+      <button class="btn btn-outline btn-sm" onclick="app.refreshData()">
+        <i class="fas fa-sync-alt"></i> Refresh
+      </button>
+    </div>
+  </div>
 
-        <div class="stats-grid">
-          <div class="stat-card card">
-            <div class="card-body">
-              <div class="stat-label">Total Stocks</div>
-              <div class="stat-value">${stocks.length}</div>
-            </div>
-          </div>
-          <div class="stat-card card">
-            <div class="card-body">
-              <div class="stat-label">Advancing</div>
-              <div class="stat-value positive">${stocks.filter(s => s.change > 0).length}</div>
-            </div>
-          </div>
-          <div class="stat-card card">
-            <div class="card-body">
-              <div class="stat-label">Declining</div>
-              <div class="stat-value negative">${stocks.filter(s => s.change < 0).length}</div>
-            </div>
-          </div>
-          <div class="stat-card card">
-            <div class="card-body">
-              <div class="stat-label">Unchanged</div>
-              <div class="stat-value">${stocks.filter(s => s.change === 0).length}</div>
-            </div>
-          </div>
-        </div>
-
-        ${stocks.length === 0 ? `
-          <div class="card">
-            <div class="card-body" style="text-align:center; padding: 3rem;">
-              <i class="fas fa-cloud-rain" style="font-size: 2rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
-              <h3>No market data</h3>
-              <p style="color: var(--text-secondary); margin-top: 0.5rem;">
-                The backend at ${CONFIG.api.baseURL} is not responding.<br>
-                Click Refresh once it's available.
-              </p>
-            </div>
-          </div>
-        ` : `
-          <div class="dashboard-grid">
-            <div class="card">
-              <div class="card-header">
-                <h3>Top Gainers</h3>
-              </div>
-              <div class="card-body">
-                ${this.renderTopMovers('gainers')}
-              </div>
-            </div>
-
-            <div class="card">
-              <div class="card-header">
-                <h3>Top Losers</h3>
-              </div>
-              <div class="card-body">
-                ${this.renderTopMovers('losers')}
-              </div>
-            </div>
-          </div>
-        `}
+  <div class="stats-grid">
+    <div class="stat-card card">
+      <div class="card-body">
+        <div class="stat-label">Total Stocks</div>
+        <div class="stat-value">${stocks.length}</div>
       </div>
-    `;
+    </div>
+    <div class="stat-card card">
+      <div class="card-body">
+        <div class="stat-label">Advancing</div>
+        <div class="stat-value positive">${stocks.filter(s => s.change > 0).length}</div>
+      </div>
+    </div>
+    <div class="stat-card card">
+      <div class="card-body">
+        <div class="stat-label">Declining</div>
+        <div class="stat-value negative">${stocks.filter(s => s.change < 0).length}</div>
+      </div>
+    </div>
+    <div class="stat-card card">
+      <div class="card-body">
+        <div class="stat-label">Unchanged</div>
+        <div class="stat-value">${stocks.filter(s => s.change === 0).length}</div>
+      </div>
+    </div>
+  </div>
+
+  ${stocks.length === 0 ? `
+    <div class="card">
+      <div class="card-body" style="text-align:center; padding: 3rem;">
+        <i class="fas fa-cloud-rain" style="font-size: 2rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
+        <h3>No market data</h3>
+        <p style="color: var(--text-secondary); margin-top: 0.5rem;">
+          The backend at ${baseURL} is not responding.<br>
+          Click Refresh once it's available.
+        </p>
+      </div>
+    </div>
+  ` : `
+    <div class="dashboard-grid">
+      <div class="card">
+        <div class="card-header"><h3>Top Gainers</h3></div>
+        <div class="card-body">${this.renderTopMovers('gainers')}</div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Top Losers</h3></div>
+        <div class="card-body">${this.renderTopMovers('losers')}</div>
+      </div>
+    </div>
+  `}
+</div>`;
   }
 
   renderTopMovers(type) {
@@ -352,14 +372,14 @@ class DreamShareApp {
             ${stock.change >= 0 ? '+' : ''}${stock.change}%
           </span>
         </div>
-      </div>
-    `).join('');
+      </div>`).join('');
   }
 
   handleSearch(event) {
     const query = event.target.value.trim();
     const searchClear = document.getElementById('searchClear');
     const searchResults = document.getElementById('searchResults');
+    if (!searchResults) return;
 
     if (searchClear) searchClear.style.display = query ? 'block' : 'none';
 
@@ -386,14 +406,11 @@ class DreamShareApp {
         <div class="result-symbol">${stock.symbol}</div>
         <div class="result-name">${stock.name}</div>
         <div class="result-price">₹${Number(stock.price).toFixed(2)}</div>
-      </div>
-    `).join('');
-
+      </div>`).join('');
     searchResults.classList.add('active');
   }
 
   showStockDetails(symbol) {
-    // Could open a modal — for now just toast
     this.showToast(`Selected: ${symbol}`, 'info');
   }
 
@@ -412,13 +429,13 @@ class DreamShareApp {
   }
 
   updateMarketStatus() {
+    if (typeof CONFIG === 'undefined' || !CONFIG.market) return;
+
     const now = new Date();
-    const [openHour, openMin]  = CONFIG.market.openTime.split(':').map(Number);
+    const [openHour, openMin] = CONFIG.market.openTime.split(':').map(Number);
     const [closeHour, closeMin] = CONFIG.market.closeTime.split(':').map(Number);
-
-    const marketOpen  = new Date(now); marketOpen.setHours(openHour, openMin, 0);
+    const marketOpen = new Date(now); marketOpen.setHours(openHour, openMin, 0);
     const marketClose = new Date(now); marketClose.setHours(closeHour, closeMin, 0);
-
     const isWeekday = now.getDay() !== 0 && now.getDay() !== 6;
     const isOpen = isWeekday && now >= marketOpen && now <= marketClose;
 
@@ -426,31 +443,30 @@ class DreamShareApp {
 
     const statusElement = document.getElementById('marketStatus');
     if (!statusElement) return;
+
     const indicator = statusElement.querySelector('.status-indicator');
-    const text      = statusElement.querySelector('.status-text');
+    const text = statusElement.querySelector('.status-text');
     if (indicator) indicator.className = `status-indicator ${isOpen ? 'open' : 'closed'}`;
-    if (text)      text.textContent    = isOpen ? 'Market Open' : 'Market Closed';
+    if (text) text.textContent = isOpen ? 'Market Open' : 'Market Closed';
   }
 
   updateConnectionStatus(status) {
     const connectionStatus = document.getElementById('connectionStatus');
     if (!connectionStatus) return;
-    const icon = connectionStatus.querySelector('i');
-    if (icon) {
-      icon.className = `fas fa-circle ${status === 'connected' ? 'connected' : 'disconnected'}`;
-    }
-    // Replace text content safely
+
     const isConnected = status === 'connected';
     connectionStatus.innerHTML = `<i class="fas fa-circle ${isConnected ? 'connected' : 'disconnected'}"></i> ${isConnected ? 'Connected' : 'Disconnected'}`;
   }
 
   updateBadges() {
     const watchlist = stateManager.get('watchlist') || [];
-    const alerts    = stateManager.get('alerts') || [];
-    const wlEl   = document.getElementById('watchlistCount');
-    const sbWl   = document.getElementById('sidebarWatchlistCount');
-    const alEl   = document.getElementById('alertsCount');
-    const sbAl   = document.getElementById('sidebarAlertsCount');
+    const alerts = stateManager.get('alerts') || [];
+
+    const wlEl = document.getElementById('watchlistCount');
+    const sbWl = document.getElementById('sidebarWatchlistCount');
+    const alEl = document.getElementById('alertsCount');
+    const sbAl = document.getElementById('sidebarAlertsCount');
+
     if (wlEl) wlEl.textContent = watchlist.length;
     if (sbWl) sbWl.textContent = watchlist.length;
     if (alEl) alEl.textContent = alerts.length;
@@ -458,19 +474,23 @@ class DreamShareApp {
   }
 
   startPeriodicUpdates() {
+    if (typeof CONFIG === 'undefined' || !CONFIG.market) return;
+
     // Update market data on interval
     setInterval(async () => {
       try {
+        if (typeof apiService === 'undefined') return;
         const data = await apiService.getMarketWatch();
         if (data && data.data) {
           stateManager.set('stocks', data.data);
-          eventBus.emit(EventBus.Events.MARKET_DATA_UPDATED, data.data);
+          if (typeof eventBus !== 'undefined' && typeof EventBus !== 'undefined') {
+            eventBus.emit(EventBus.Events.MARKET_DATA_UPDATED, data.data);
+          }
         }
       } catch (error) {
-        // Quiet failure for periodic refresh
         console.debug('Periodic update skipped:', error.message);
       }
-    }, CONFIG.market.refreshInterval);
+    }, CONFIG.market.refreshInterval || 30000);
 
     // Update market status every 30 seconds
     setInterval(() => this.updateMarketStatus(), 30000);
@@ -478,7 +498,9 @@ class DreamShareApp {
 
   async refreshData() {
     this.showToast('Refreshing...', 'info');
-    apiService.clearCache();
+    if (typeof apiService !== 'undefined' && apiService.clearCache) {
+      apiService.clearCache();
+    }
     await this.loadInitialData();
     await this.loadView(stateManager.get('activeView') || 'dashboard');
     this.showToast('Data refreshed', 'success');
@@ -508,12 +530,15 @@ class DreamShareApp {
   showToast(message, type = 'info') {
     const container = document.getElementById('toastContainer');
     if (!container) return;
+
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
+
     const icon = type === 'success' ? 'check-circle'
-              : type === 'error'   ? 'exclamation-circle'
-              : type === 'warning' ? 'exclamation-triangle'
-              :                       'info-circle';
+      : type === 'error' ? 'exclamation-circle'
+      : type === 'warning' ? 'exclamation-triangle'
+      : 'info-circle';
+
     toast.innerHTML = `<i class="fas fa-${icon}"></i><span>${message}</span>`;
     container.appendChild(toast);
 
