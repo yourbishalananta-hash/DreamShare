@@ -1,8 +1,8 @@
 // ============================================
-// MARKETPULSE PRO - MAIN APPLICATION
+// DREAM SHARE - MAIN APPLICATION
 // ============================================
 
-class MarketPulseApp {
+class DreamShareApp {
   constructor() {
     this.components = {};
     this.initialized = false;
@@ -11,7 +11,7 @@ class MarketPulseApp {
   async initialize() {
     if (this.initialized) return;
 
-    console.log('🚀 Initializing MarketPulse Pro...');
+    console.log('🚀 Initializing Dream Share...');
     this.showLoading(true);
 
     try {
@@ -43,7 +43,7 @@ class MarketPulseApp {
       this.startPeriodicUpdates();
 
       this.initialized = true;
-      console.log('✅ MarketPulse Pro initialized successfully');
+      console.log('✅ Dream Share initialized successfully');
 
     } catch (error) {
       console.error('❌ Initialization failed:', error);
@@ -537,6 +537,6 @@ class MarketPulseApp {
 // Initialize application when DOM is ready
 let app;
 document.addEventListener('DOMContentLoaded', () => {
-  app = new MarketPulseApp();
+  app = new DreamShareApp();
   app.initialize();
 });

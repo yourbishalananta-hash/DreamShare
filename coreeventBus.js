@@ -1,5 +1,5 @@
 // ============================================
-// MARKETPULSE PRO - EVENT BUS
+// DREAM SHARE - EVENT BUS
 // ============================================
 
 class EventBus {

@@ -1,5 +1,5 @@
 // ============================================
-// MARKETPULSE PRO - WEBSOCKET SERVICE
+// DREAM SHARE - WEBSOCKET SERVICE
 // ============================================
 
 class WebSocketService {

@@ -1,5 +1,5 @@
 // ============================================
-// MARKETPULSE PRO - STATE MANAGER
+// DREAM SHARE - STATE MANAGER
 // ============================================
 
 class StateManager {

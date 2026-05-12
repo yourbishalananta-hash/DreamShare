@@ -1,5 +1,5 @@
 // ============================================
-// MARKETPULSE PRO - API SERVICE
+// DREAM SHARE - API SERVICE
 // ============================================
 
 class APIService {

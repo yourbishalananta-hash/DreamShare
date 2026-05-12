@@ -1,5 +1,5 @@
 // ============================================
-// MARKETPULSE PRO - COMPONENTS
+// DREAM SHARE - COMPONENTS
 // ============================================
 
 class BaseComponent {

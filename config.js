@@ -1,5 +1,5 @@
 // ============================================
-// MARKETPULSE PRO - CONFIGURATION
+// DREAM SHARE - CONFIGURATION
 // ============================================
 
 const CONFIG = {
