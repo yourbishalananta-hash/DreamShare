@@ -158,7 +158,6 @@ class DreamShareApp {
             this.components.technicalChart.isRendered = true;
         }
     }
-}
 
   attachGlobalSearchAutocomplete() {
     const input = document.getElementById('globalSearch');
