@@ -1,4 +1,3 @@
-// In your TechnicalChartComponent, the loadData method should work now:
 async loadData() {
     this.setStatus(`Loading ${this.symbol}...`, 'info');
     
