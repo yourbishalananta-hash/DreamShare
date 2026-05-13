@@ -1,6 +1,6 @@
 // apiService.js - Connects to MarketPulse Pro Enterprise API (FastAPI)
 
-const API_BASE_URL = 'https://dreamstock-backend.onrender.com'; // Change to your backend URL
+const API_BASE_URL = 'https://dreamstock-backend.onrender.com';
 
 class ApiService {
   constructor() {
@@ -9,59 +9,67 @@ class ApiService {
     this._cache = new Map();
   }
 
-  // ========== REST API Methods ==========
-
   async request(endpoint, options = {}) {
     const url = `${API_BASE_URL}${endpoint}`;
     const response = await fetch(url, {
       headers: { 'Content-Type': 'application/json' },
       ...options
     });
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`API Error: ${response.status}`);
     return response.json();
   }
 
-  /**
-   * Get a snapshot of the market — used by the dashboard.
-   * Returns the same shape as getAllStocks: { data: [...] }.
-   */
+  // Dashboard endpoints
   async getMarketWatch() {
     return this.getAllStocks(1, 500);
   }
 
-  /**
-   * Clear any cached responses. Currently a no-op placeholder; real caching
-   * can be added later by storing responses in this._cache.
-   */
+  async getMarketSummary() {
+    return this.request('/market/summary');
+  }
+
+  async getTop(category, limit = 5) {
+    return this.request(`/stocks/top/${category}?limit=${limit}`);
+  }
+
   clearCache() {
     this._cache.clear();
   }
 
+  async getAllStocks(page = 1, limit = 50) {
+    return this.request(`/stocks/all?page=${page}&limit=${limit}`);
+  }
+
+  // Map our UI timeframe key → valid yfinance (period, interval).
+  // Important: yfinance accepts only specific strings; using anything else
+  // returns an empty dataframe and the chart goes blank.
+  static TIMEFRAME_MAP = {
+    '1d':  { period: '1d',  interval: '5m'  },
+    '5d':  { period: '5d',  interval: '15m' },
+    '1mo': { period: '1mo', interval: '1d'  },
+    '3mo': { period: '3mo', interval: '1d'  },
+    '6mo': { period: '6mo', interval: '1d'  },
+    '1y':  { period: '1y',  interval: '1d'  },
+    '5y':  { period: '5y',  interval: '1wk' },
+    'max': { period: 'max', interval: '1mo' },
+  };
+
   /**
-   * Get historical OHLC data for a symbol.
-   * @param {string} symbol - Stock symbol (e.g., "RELIANCE") or index symbol (e.g., "^NSEI")
-   * @param {object} params - { from, to, interval, limit } (optional)
-   * @returns {Promise<Array>} Array of { timestamp, open, high, low, close, volume }
+   * Get historical OHLC data.
+   * @param {string} symbol
+   * @param {object} params - { range } where range is a key from TIMEFRAME_MAP
    */
   async getHistoricalData(symbol, params = {}) {
-    // Map common indices to Yahoo Finance symbols
     let yfSymbol = symbol;
     if (symbol === 'NIFTY 50' || symbol === 'NIFTY50') yfSymbol = '^NSEI';
     if (symbol === 'SENSEX') yfSymbol = '^BSESN';
+    if (symbol === 'BANK NIFTY' || symbol === 'BANKNIFTY') yfSymbol = '^NSEBANK';
 
-    // Translate our timeframe to Yahoo Finance period/interval
-    let period = '1y'; // default
-    let interval = '1d';
-    if (params.limit) {
-      if (params.limit <= 100) period = '1mo';
-      if (params.limit <= 30) period = '5d';
-      if (params.limit <= 10) period = '1d';
-    }
-    if (params.interval) interval = params.interval;
+    const range = (params.range && ApiService.TIMEFRAME_MAP[params.range])
+      ? ApiService.TIMEFRAME_MAP[params.range]
+      : ApiService.TIMEFRAME_MAP['1y'];
 
-    const url = `/stocks/${encodeURIComponent(yfSymbol)}/history?period=${period}&interval=${interval}`;
+    const url = `/stocks/${encodeURIComponent(yfSymbol)}/history?period=${range.period}&interval=${range.interval}`;
     const data = await this.request(url);
 
     if (Array.isArray(data)) {
@@ -77,48 +85,14 @@ class ApiService {
     return [];
   }
 
-  /**
-   * Get real-time quote for a single symbol
-   */
-  async getRealtimeQuote(symbol) {
-    const all = await this.request('/stocks/all?page=1&limit=500');
-    const found = all.data.find(s => s.symbol === symbol);
-    if (found) {
-      return {
-        symbol: found.symbol,
-        price: found.ltp,
-        change: found.change,
-        volume: found.volume,
-        timestamp: found.timestamp
-      };
-    }
-    return null;
-  }
-
-  /**
-   * Get paginated list of all stocks (for screener / watchlist)
-   */
-  async getAllStocks(page = 1, limit = 50) {
-    return this.request(`/stocks/all?page=${page}&limit=${limit}`);
-  }
-
-  /**
-   * Get fundamentals (P/E, market cap, etc.)
-   */
   async getFundamentals(symbol) {
     let yfSymbol = symbol;
     if (symbol === 'NIFTY 50' || symbol === 'NIFTY50') yfSymbol = '^NSEI';
     if (symbol === 'SENSEX') yfSymbol = '^BSESN';
+    if (symbol === 'BANK NIFTY' || symbol === 'BANKNIFTY') yfSymbol = '^NSEBANK';
     return this.request(`/stocks/${encodeURIComponent(yfSymbol)}/fundamentals`);
   }
 
-  // ========== WebSocket Live Updates ==========
-
-  /**
-   * Build the WebSocket URL from API_BASE_URL so it works in production.
-   * https://foo.com -> wss://foo.com/ws
-   * http://localhost:8000 -> ws://localhost:8000/ws
-   */
   _wsUrl() {
     try {
       const u = new URL(API_BASE_URL);
@@ -131,16 +105,11 @@ class ApiService {
 
   connectWebSocket(onMessageCallback) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
-
     this.ws = new WebSocket(this._wsUrl());
-
     this.ws.onopen = () => console.log('WebSocket connected');
-
     this.ws.onmessage = (event) => {
       let data;
-      try { data = JSON.parse(event.data); }
-      catch (e) { return; }
-
+      try { data = JSON.parse(event.data); } catch (e) { return; }
       if (data.type === 'MARKET_UPDATE' && data.data) {
         const quotes = {};
         Object.keys(data.data).forEach(ticker => {
@@ -150,9 +119,7 @@ class ApiService {
         if (onMessageCallback) onMessageCallback(quotes);
       }
     };
-
     this.ws.onerror = (err) => console.error('WebSocket error', err);
-
     this.ws.onclose = () => {
       console.log('WebSocket closed, reconnecting in 5s...');
       setTimeout(() => this.connectWebSocket(onMessageCallback), 5000);
@@ -169,9 +136,5 @@ class ApiService {
   }
 }
 
-// ============================================
-// IMPORTANT: Create the global instance so app.js can use `apiService`.
-// Without this line, `apiService` is undefined everywhere.
-// ============================================
 const apiService = new ApiService();
 window.apiService = apiService;
