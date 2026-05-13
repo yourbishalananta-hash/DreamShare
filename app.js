@@ -6,6 +6,8 @@ class DreamShareApp {
   constructor() {
     this.components = {};
     this.initialized = false;
+    this.indices = [];
+    this.tableViewState = null; // {category, sortKey, sortDir}
   }
 
   async initialize() {
@@ -14,62 +16,45 @@ class DreamShareApp {
     this.showLoading(true);
 
     try {
-      // Initialize core services first (websocket is non-blocking)
       this.initializeServices();
-
-      // Set up event listeners
       this.setupEventListeners();
 
-      // Load initial data (errors here are non-fatal)
       await this.loadInitialData();
 
-      // Show platform regardless of data load result
       this.showLoading(false);
-      document.getElementById('mainPlatform').style.display = 'grid';
+      const main = document.getElementById('mainPlatform');
+      if (main) main.style.display = 'grid';
 
-      // Render the initial view (dashboard by default)
       const initialView = stateManager.get('activeView') || 'dashboard';
       await this.loadView(initialView);
 
-      // Update market status and badges
       this.updateMarketStatus();
       this.updateBadges();
-
-      // Start periodic updates
+      this.updateIndicesPanel();
       this.startPeriodicUpdates();
 
       this.initialized = true;
       console.log('✅ Dream Share initialized successfully');
-
     } catch (error) {
       console.error('❌ Initialization failed:', error);
-      // Even on failure, show the platform so the user isn't stuck
       this.showLoading(false);
       const main = document.getElementById('mainPlatform');
       if (main) main.style.display = 'grid';
       this.showToast('Initialization had errors. Some features may not work.', 'error');
-      // Still try to render dashboard
       try { await this.loadView('dashboard'); } catch (_) {}
     }
   }
 
   initializeServices() {
-    // Connect to WebSocket for real-time updates (non-blocking)
     if (typeof CONFIG !== 'undefined' && CONFIG.features && CONFIG.features.realTimeUpdates
         && typeof webSocketService !== 'undefined') {
-      try {
-        webSocketService.connect();
-      } catch (e) {
-        console.warn('WebSocket connection failed:', e.message);
-      }
+      try { webSocketService.connect(); }
+      catch (e) { console.warn('WebSocket connection failed:', e.message); }
     }
-
-    // Subscribe to events
     this.setupEventSubscriptions();
   }
 
   setupEventListeners() {
-    // Sidebar navigation
     document.querySelectorAll('.menu-item').forEach(item => {
       item.addEventListener('click', (e) => {
         const view = e.currentTarget.dataset.view;
@@ -77,13 +62,11 @@ class DreamShareApp {
       });
     });
 
-    // Global search
     const searchInput = document.getElementById('globalSearch');
     if (searchInput) {
       searchInput.addEventListener('input', this.debounce(this.handleSearch.bind(this), 300));
     }
 
-    // Search clear button
     const searchClear = document.getElementById('searchClear');
     if (searchClear) {
       searchClear.addEventListener('click', () => {
@@ -94,20 +77,15 @@ class DreamShareApp {
       });
     }
 
-    // Navigation buttons
     this.safeBind('btnWatchlist', () => this.navigateTo('watchlist'));
     this.safeBind('btnAlerts', () => this.navigateTo('alerts'));
     this.safeBind('btnPortfolio', () => this.navigateTo('portfolio'));
     this.safeBind('btnSettings', () => this.openSettings());
 
-    // Panel tabs
     document.querySelectorAll('.panel-tab').forEach(tab => {
-      tab.addEventListener('click', (e) => {
-        this.switchPanel(e.currentTarget.dataset.panel);
-      });
+      tab.addEventListener('click', (e) => this.switchPanel(e.currentTarget.dataset.panel));
     });
 
-    // Keyboard shortcuts
     document.addEventListener('keydown', this.handleKeyboardShortcuts.bind(this));
   }
 
@@ -119,12 +97,12 @@ class DreamShareApp {
   setupEventSubscriptions() {
     if (typeof eventBus === 'undefined' || typeof EventBus === 'undefined') return;
 
-    eventBus.on(EventBus.Events.MARKET_DATA_UPDATED, (data) => {
-      // Refresh dashboard if it's the active view
-      if (stateManager.get('activeView') === 'dashboard') {
-        this.loadView('dashboard');
-      }
-      // Update last-updated time
+    eventBus.on(EventBus.Events.MARKET_DATA_UPDATED, () => {
+      // Re-render only if the active view is dashboard or one of the top-list tables
+      const view = stateManager.get('activeView');
+      if (view === 'dashboard') this.renderDashboardSections();
+      else if (view === 'top-list') this.renderTopListContent();
+      this.updateIndicesPanel();
       const el = document.getElementById('lastUpdated');
       if (el) el.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
     });
@@ -134,26 +112,23 @@ class DreamShareApp {
       this.showStockDetails(symbol);
     });
 
-    eventBus.on(EventBus.Events.CONNECTION_CHANGED, (status) => {
-      this.updateConnectionStatus(status);
-    });
-
-    eventBus.on(EventBus.Events.ERROR_OCCURRED, (error) => {
-      this.showToast(error.message, 'error');
-    });
+    eventBus.on(EventBus.Events.CONNECTION_CHANGED, (status) => this.updateConnectionStatus(status));
+    eventBus.on(EventBus.Events.ERROR_OCCURRED, (error) => this.showToast(error.message, 'error'));
   }
 
   async loadInitialData() {
-    // Load market data — non-fatal if it fails
     try {
       if (typeof apiService === 'undefined') {
-        console.warn('apiService not available');
         stateManager.set('stocks', []);
         return;
       }
-      const marketData = await apiService.getMarketWatch();
+      const [marketData, summary] = await Promise.all([
+        apiService.getMarketWatch().catch(() => ({ data: [] })),
+        apiService.getMarketSummary().catch(() => ({ indices: [], totals: {} })),
+      ]);
       stateManager.set('stocks', (marketData && marketData.data) || []);
-      console.log(`📊 Loaded ${stateManager.get('stocks').length} stocks`);
+      this.indices = (summary && summary.indices) || [];
+      console.log(`📊 Loaded ${stateManager.get('stocks').length} stocks, ${this.indices.length} indices`);
     } catch (error) {
       console.warn('⚠️ Market data unavailable:', error.message);
       stateManager.set('stocks', []);
@@ -161,92 +136,87 @@ class DreamShareApp {
     }
   }
 
-  navigateTo(view) {
+  navigateTo(view, payload) {
     stateManager.set('activeView', view);
-
-    // Update sidebar active state
     document.querySelectorAll('.menu-item').forEach(item => {
       item.classList.toggle('active', item.dataset.view === view);
     });
-
-    // Load view content
-    this.loadView(view);
-
+    this.loadView(view, payload);
     if (typeof eventBus !== 'undefined' && typeof EventBus !== 'undefined') {
       eventBus.emit(EventBus.Events.VIEW_CHANGED, view);
     }
   }
 
-  async loadView(view) {
+  async loadView(view, payload) {
     const contentArea = document.getElementById('contentArea');
     if (!contentArea) return;
 
     try {
       switch (view) {
         case 'dashboard':
-          contentArea.innerHTML = this.renderDashboard();
+          contentArea.innerHTML = this.renderDashboardShell();
+          this.renderDashboardSections();
+          this.attachDashboardEvents();
           break;
 
-        case 'charts': {
+        case 'top-list':
+          // payload = { category: 'gainers'|'losers'|'turnover'|'volume' }
+          this.tableViewState = {
+            category: (payload && payload.category) || 'gainers',
+            sortKey: this.defaultSortKeyFor((payload && payload.category) || 'gainers'),
+            sortDir: 'desc',
+          };
+          contentArea.innerHTML = this.renderTopListShell();
+          this.renderTopListContent();
+          this.attachTopListEvents();
+          break;
+
+        case 'charts':
           contentArea.innerHTML = '<div id="charts-container"></div>';
           if (typeof ChartsComponent !== 'undefined') {
             this.components.charts = new ChartsComponent('charts-container', stateManager, apiService);
             this.components.charts.render();
           }
           break;
-        }
 
-        case 'watchlist': {
+        case 'watchlist':
           contentArea.innerHTML = '<div id="watchlist-container"></div>';
           if (typeof WatchlistComponent !== 'undefined') {
             this.components.watchlist = new WatchlistComponent('watchlist-container', stateManager);
             this.components.watchlist.render();
           }
           break;
-        }
 
-        case 'portfolio': {
+        case 'portfolio':
           contentArea.innerHTML = '<div id="portfolio-container"></div>';
           if (typeof PortfolioComponent !== 'undefined') {
             this.components.portfolio = new PortfolioComponent('portfolio-container', stateManager);
             this.components.portfolio.render();
           }
           break;
-        }
 
-        case 'news': {
+        case 'news':
           contentArea.innerHTML = '<div id="news-container"></div>';
           if (typeof NewsComponent !== 'undefined') {
             this.components.news = new NewsComponent('news-container');
             this.components.news.render();
           }
           break;
-        }
 
-        case 'screener': {
+        case 'screener':
           contentArea.innerHTML = '<div id="screener-container"></div>';
           if (typeof ScreenerComponent !== 'undefined') {
             this.components.screener = new ScreenerComponent('screener-container', stateManager);
             this.components.screener.render();
           }
           break;
-        }
 
-        case 'alerts': {
+        case 'alerts':
           contentArea.innerHTML = '<div id="alerts-container"></div>';
           if (typeof AlertsComponent !== 'undefined') {
             this.components.alerts = new AlertsComponent('alerts-container', stateManager);
             this.components.alerts.render();
           }
-          break;
-        }
-
-        case 'orders':
-        case 'technical':
-        case 'fundamental':
-        case 'compare':
-        case 'heatmap':
-          contentArea.innerHTML = this.renderComingSoon(view);
           break;
 
         default:
@@ -254,14 +224,294 @@ class DreamShareApp {
       }
     } catch (error) {
       console.error(`Error loading view ${view}:`, error);
-      contentArea.innerHTML = `
+      contentArea.innerHTML = `<div class="card"><div class="card-body"><h2>Error</h2><p>Failed to load ${view}.</p></div></div>`;
+    }
+  }
+
+  // ===== DASHBOARD =====
+
+  renderDashboardShell() {
+    return `
+      <div class="dashboard">
+        <div class="dashboard-header">
+          <h1 class="view-title">Market Dashboard</h1>
+          <div class="dashboard-actions">
+            <button class="btn btn-outline btn-sm" id="dashRefreshBtn">
+              <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+          </div>
+        </div>
+        <div id="dashboardSections"></div>
+      </div>`;
+  }
+
+  renderDashboardSections() {
+    const container = document.getElementById('dashboardSections');
+    if (!container) return;
+
+    const stocks = stateManager.get('stocks') || [];
+
+    if (stocks.length === 0) {
+      const baseURL = (typeof CONFIG !== 'undefined' && CONFIG.api && CONFIG.api.baseURL) || '';
+      container.innerHTML = `
         <div class="card">
-          <div class="card-body">
-            <h2>Error</h2>
-            <p>Failed to load ${view}.</p>
+          <div class="card-body" style="text-align:center; padding: 3rem;">
+            <i class="fas fa-cloud-rain" style="font-size: 2rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
+            <h3>No market data</h3>
+            <p style="color: var(--text-secondary); margin-top: 0.5rem;">
+              The backend at ${baseURL} hasn't returned data yet.<br>
+              Click Refresh in a moment, or wait for the server to wake up.
+            </p>
           </div>
         </div>`;
+      return;
     }
+
+    const advancing = stocks.filter(s => s.change > 0).length;
+    const declining = stocks.filter(s => s.change < 0).length;
+    const unchanged = stocks.filter(s => s.change === 0).length;
+
+    const gainers = [...stocks].filter(s => s.change > 0).sort((a, b) => b.change - a.change).slice(0, 5);
+    const losers  = [...stocks].filter(s => s.change < 0).sort((a, b) => a.change - b.change).slice(0, 5);
+    const turnover = [...stocks].sort((a, b) => (b.turnover || 0) - (a.turnover || 0)).slice(0, 5);
+    const active   = [...stocks].sort((a, b) => (b.volume || 0) - (a.volume || 0)).slice(0, 5);
+
+    container.innerHTML = `
+      <!-- Market Summary -->
+      <section class="dash-section">
+        <div class="dash-section-header">
+          <h2><i class="fas fa-globe-asia"></i> Market Summary</h2>
+        </div>
+        <div class="summary-grid">
+          ${this.renderIndexCards()}
+          ${this.renderTotalsCards(stocks.length, advancing, declining, unchanged)}
+        </div>
+      </section>
+
+      <!-- 4-column grid of top lists -->
+      <div class="top-lists-grid">
+        ${this.renderTopListCard('gainers', '📈 Top Gainers', gainers)}
+        ${this.renderTopListCard('losers',  '📉 Top Losers',  losers)}
+        ${this.renderTopListCard('turnover','💰 Top Turnover', turnover)}
+        ${this.renderTopListCard('volume',  '🔥 Most Active', active)}
+      </div>
+    `;
+  }
+
+  renderIndexCards() {
+    if (!this.indices || this.indices.length === 0) {
+      return `<div class="summary-card card"><div class="card-body"><div class="stat-label">Indices</div><div class="stat-value" style="color:var(--text-muted);font-size:1rem;">Loading…</div></div></div>`;
+    }
+    return this.indices.map(idx => {
+      const positive = idx.change >= 0;
+      const cls = positive ? 'positive' : 'negative';
+      const arrow = positive ? '▲' : '▼';
+      return `
+        <div class="summary-card card">
+          <div class="card-body">
+            <div class="stat-label">${idx.symbol}</div>
+            <div class="stat-value">${this.formatNumber(idx.ltp)}</div>
+            <div class="stat-change ${cls}">${arrow} ${idx.changeAbs || ''} (${positive ? '+' : ''}${idx.change}%)</div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  renderTotalsCards(total, advancing, declining, unchanged) {
+    return `
+      <div class="summary-card card">
+        <div class="card-body">
+          <div class="stat-label">Total Stocks</div>
+          <div class="stat-value">${total}</div>
+          <div class="stat-subline">
+            <span class="positive">▲ ${advancing}</span>
+            <span class="negative">▼ ${declining}</span>
+            <span style="color:var(--text-muted)">● ${unchanged}</span>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  renderTopListCard(category, title, items) {
+    const rows = items.map(s => {
+      const cls = s.change >= 0 ? 'positive' : 'negative';
+      return `
+        <li class="mover-item" data-symbol="${s.symbol}">
+          <div class="mover-info">
+            <span class="mover-symbol">${s.symbol}</span>
+          </div>
+          <div class="mover-price">
+            <span class="price">₹${this.formatNumber(s.ltp)}</span>
+            <span class="change ${cls}">${s.change >= 0 ? '+' : ''}${s.change}%</span>
+          </div>
+        </li>`;
+    }).join('');
+
+    return `
+      <section class="card top-list-card">
+        <div class="card-header top-list-header">
+          <h3>${title}</h3>
+          <button class="btn-link view-more-btn" data-category="${category}">View All →</button>
+        </div>
+        <ul class="top-list">${rows || `<li style="color:var(--text-muted);padding:1rem;">No data</li>`}</ul>
+      </section>`;
+  }
+
+  attachDashboardEvents() {
+    const refreshBtn = document.getElementById('dashRefreshBtn');
+    if (refreshBtn) refreshBtn.addEventListener('click', () => this.refreshData());
+
+    document.querySelectorAll('.view-more-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const category = e.currentTarget.dataset.category;
+        this.navigateTo('top-list', { category });
+      });
+    });
+
+    document.querySelectorAll('.mover-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        const sym = e.currentTarget.dataset.symbol;
+        if (sym && typeof eventBus !== 'undefined') eventBus.emit(EventBus.Events.STOCK_SELECTED, sym);
+      });
+    });
+  }
+
+  // ===== TOP LIST (full sortable table) =====
+
+  renderTopListShell() {
+    const titles = {
+      gainers: '📈 Top Gainers',
+      losers:  '📉 Top Losers',
+      turnover:'💰 Top Turnover',
+      volume:  '🔥 Most Active',
+    };
+    const category = this.tableViewState.category;
+    return `
+      <div class="dashboard">
+        <div class="dashboard-header">
+          <div>
+            <button class="btn-link" id="topListBack">← Back to Dashboard</button>
+            <h1 class="view-title">${titles[category] || category}</h1>
+          </div>
+          <div class="dashboard-actions">
+            <div class="top-list-tabs">
+              ${['gainers','losers','turnover','volume'].map(c =>
+                `<button class="tab-btn ${c===category?'active':''}" data-cat="${c}">${titles[c]}</button>`
+              ).join('')}
+            </div>
+          </div>
+        </div>
+        <div id="topListContent"></div>
+      </div>`;
+  }
+
+  defaultSortKeyFor(category) {
+    if (category === 'gainers' || category === 'losers') return 'change';
+    if (category === 'turnover') return 'turnover';
+    if (category === 'volume' || category === 'active') return 'volume';
+    return 'change';
+  }
+
+  renderTopListContent() {
+    const container = document.getElementById('topListContent');
+    if (!container || !this.tableViewState) return;
+
+    const { category, sortKey, sortDir } = this.tableViewState;
+    const stocks = stateManager.get('stocks') || [];
+
+    let filtered;
+    if (category === 'gainers') filtered = stocks.filter(s => s.change > 0);
+    else if (category === 'losers') filtered = stocks.filter(s => s.change < 0);
+    else filtered = [...stocks];
+
+    filtered.sort((a, b) => {
+      const va = a[sortKey] ?? 0;
+      const vb = b[sortKey] ?? 0;
+      return sortDir === 'desc' ? vb - va : va - vb;
+    });
+
+    if (filtered.length === 0) {
+      container.innerHTML = `<div class="card"><div class="card-body" style="padding:2rem;color:var(--text-muted);">No stocks in this category.</div></div>`;
+      return;
+    }
+
+    const dirIcon = (key) => sortKey !== key ? '' : (sortDir === 'desc' ? ' ▼' : ' ▲');
+
+    container.innerHTML = `
+      <div class="card">
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Symbol</th>
+                <th class="sortable" data-sort="ltp">Price${dirIcon('ltp')}</th>
+                <th class="sortable" data-sort="changeAbs">Change${dirIcon('changeAbs')}</th>
+                <th class="sortable" data-sort="change">% Change${dirIcon('change')}</th>
+                <th class="sortable" data-sort="volume">Volume${dirIcon('volume')}</th>
+                <th class="sortable" data-sort="turnover">Turnover${dirIcon('turnover')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filtered.map((s, i) => {
+                const cls = s.change >= 0 ? 'positive' : 'negative';
+                return `
+                  <tr data-symbol="${s.symbol}" class="row-clickable">
+                    <td>${i + 1}</td>
+                    <td><strong>${s.symbol}</strong></td>
+                    <td>₹${this.formatNumber(s.ltp)}</td>
+                    <td class="${cls}">${s.changeAbs >= 0 ? '+' : ''}${this.formatNumber(s.changeAbs)}</td>
+                    <td class="${cls}">${s.change >= 0 ? '+' : ''}${s.change}%</td>
+                    <td>${this.formatVolume(s.volume)}</td>
+                    <td>₹${this.formatVolume(s.turnover)}</td>
+                  </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+  }
+
+  attachTopListEvents() {
+    const back = document.getElementById('topListBack');
+    if (back) back.addEventListener('click', () => this.navigateTo('dashboard'));
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const cat = e.currentTarget.dataset.cat;
+        this.tableViewState.category = cat;
+        this.tableViewState.sortKey = this.defaultSortKeyFor(cat);
+        this.tableViewState.sortDir = 'desc';
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
+        // Update title too
+        const title = document.querySelector('.view-title');
+        const titles = {gainers:'📈 Top Gainers', losers:'📉 Top Losers', turnover:'💰 Top Turnover', volume:'🔥 Most Active'};
+        if (title) title.textContent = titles[cat] || cat;
+        this.renderTopListContent();
+        this.attachTopListEvents();
+      });
+    });
+
+    document.querySelectorAll('.sortable').forEach(th => {
+      th.addEventListener('click', (e) => {
+        const key = e.currentTarget.dataset.sort;
+        if (this.tableViewState.sortKey === key) {
+          this.tableViewState.sortDir = this.tableViewState.sortDir === 'desc' ? 'asc' : 'desc';
+        } else {
+          this.tableViewState.sortKey = key;
+          this.tableViewState.sortDir = 'desc';
+        }
+        this.renderTopListContent();
+        this.attachTopListEvents();
+      });
+    });
+
+    document.querySelectorAll('.row-clickable').forEach(row => {
+      row.addEventListener('click', (e) => {
+        const sym = e.currentTarget.dataset.symbol;
+        if (sym && typeof eventBus !== 'undefined') eventBus.emit(EventBus.Events.STOCK_SELECTED, sym);
+      });
+    });
   }
 
   renderComingSoon(view) {
@@ -270,110 +520,14 @@ class DreamShareApp {
         <div class="card-body" style="text-align:center; padding: 3rem;">
           <i class="fas fa-tools" style="font-size: 2rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
           <h2>${this.titleCase(view)}</h2>
-          <p style="color: var(--text-secondary); margin-top: 0.5rem;">
-            This view is under construction.
-          </p>
+          <p style="color: var(--text-secondary); margin-top: 0.5rem;">This view is under construction.</p>
         </div>
       </div>`;
   }
 
-  titleCase(s) {
-    return (s || '').replace(/(^|\s)\S/g, t => t.toUpperCase());
-  }
+  titleCase(s) { return (s || '').replace(/(^|\s)\S/g, t => t.toUpperCase()); }
 
-  renderDashboard() {
-    const stocks = stateManager.get('stocks') || [];
-    const baseURL = (typeof CONFIG !== 'undefined' && CONFIG.api && CONFIG.api.baseURL) || '';
-
-    return `
-<div class="dashboard">
-  <div class="dashboard-header">
-    <h1 class="view-title">Market Dashboard</h1>
-    <div class="dashboard-actions">
-      <button class="btn btn-outline btn-sm" onclick="app.refreshData()">
-        <i class="fas fa-sync-alt"></i> Refresh
-      </button>
-    </div>
-  </div>
-
-  <div class="stats-grid">
-    <div class="stat-card card">
-      <div class="card-body">
-        <div class="stat-label">Total Stocks</div>
-        <div class="stat-value">${stocks.length}</div>
-      </div>
-    </div>
-    <div class="stat-card card">
-      <div class="card-body">
-        <div class="stat-label">Advancing</div>
-        <div class="stat-value positive">${stocks.filter(s => s.change > 0).length}</div>
-      </div>
-    </div>
-    <div class="stat-card card">
-      <div class="card-body">
-        <div class="stat-label">Declining</div>
-        <div class="stat-value negative">${stocks.filter(s => s.change < 0).length}</div>
-      </div>
-    </div>
-    <div class="stat-card card">
-      <div class="card-body">
-        <div class="stat-label">Unchanged</div>
-        <div class="stat-value">${stocks.filter(s => s.change === 0).length}</div>
-      </div>
-    </div>
-  </div>
-
-  ${stocks.length === 0 ? `
-    <div class="card">
-      <div class="card-body" style="text-align:center; padding: 3rem;">
-        <i class="fas fa-cloud-rain" style="font-size: 2rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
-        <h3>No market data</h3>
-        <p style="color: var(--text-secondary); margin-top: 0.5rem;">
-          The backend at ${baseURL} is not responding.<br>
-          Click Refresh once it's available.
-        </p>
-      </div>
-    </div>
-  ` : `
-    <div class="dashboard-grid">
-      <div class="card">
-        <div class="card-header"><h3>Top Gainers</h3></div>
-        <div class="card-body">${this.renderTopMovers('gainers')}</div>
-      </div>
-      <div class="card">
-        <div class="card-header"><h3>Top Losers</h3></div>
-        <div class="card-body">${this.renderTopMovers('losers')}</div>
-      </div>
-    </div>
-  `}
-</div>`;
-  }
-
-  renderTopMovers(type) {
-    const stocks = stateManager.get('stocks') || [];
-    const sorted = [...stocks]
-      .filter(s => type === 'gainers' ? s.change > 0 : s.change < 0)
-      .sort((a, b) => type === 'gainers' ? b.change - a.change : a.change - b.change)
-      .slice(0, 5);
-
-    if (sorted.length === 0) {
-      return `<p style="color: var(--text-muted); padding: 1rem 0;">No ${type} to show.</p>`;
-    }
-
-    return sorted.map(stock => `
-      <div class="mover-item" onclick="eventBus.emit(EventBus.Events.STOCK_SELECTED, '${stock.symbol}')">
-        <div class="mover-info">
-          <span class="mover-symbol">${stock.symbol}</span>
-          <span class="mover-name">${stock.name}</span>
-        </div>
-        <div class="mover-price">
-          <span class="price">₹${Number(stock.price).toFixed(2)}</span>
-          <span class="change ${stock.change >= 0 ? 'positive' : 'negative'}">
-            ${stock.change >= 0 ? '+' : ''}${stock.change}%
-          </span>
-        </div>
-      </div>`).join('');
-  }
+  // ===== SEARCH =====
 
   handleSearch(event) {
     const query = event.target.value.trim();
@@ -383,17 +537,15 @@ class DreamShareApp {
 
     if (searchClear) searchClear.style.display = query ? 'block' : 'none';
 
-    if (query.length < 2) {
+    if (query.length < 1) {
       searchResults.innerHTML = '';
       searchResults.classList.remove('active');
       return;
     }
 
     const stocks = stateManager.get('stocks') || [];
-    const results = stocks.filter(s =>
-      s.symbol.toLowerCase().includes(query.toLowerCase()) ||
-      s.name.toLowerCase().includes(query.toLowerCase())
-    ).slice(0, 10);
+    const q = query.toLowerCase();
+    const results = stocks.filter(s => s.symbol.toLowerCase().includes(q)).slice(0, 10);
 
     if (results.length === 0) {
       searchResults.innerHTML = `<div class="search-result-item"><span style="color:var(--text-muted)">No matches for "${query}"</span></div>`;
@@ -402,12 +554,25 @@ class DreamShareApp {
     }
 
     searchResults.innerHTML = results.map(stock => `
-      <div class="search-result-item" onclick="eventBus.emit(EventBus.Events.STOCK_SELECTED, '${stock.symbol}'); document.getElementById('searchResults').classList.remove('active');">
+      <div class="search-result-item" data-symbol="${stock.symbol}">
         <div class="result-symbol">${stock.symbol}</div>
-        <div class="result-name">${stock.name}</div>
-        <div class="result-price">₹${Number(stock.price).toFixed(2)}</div>
+        <div class="result-price">₹${this.formatNumber(stock.ltp)}</div>
+        <div class="result-change ${stock.change >= 0 ? 'positive' : 'negative'}">
+          ${stock.change >= 0 ? '+' : ''}${stock.change}%
+        </div>
       </div>`).join('');
     searchResults.classList.add('active');
+
+    // Attach click handlers
+    searchResults.querySelectorAll('.search-result-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const sym = item.dataset.symbol;
+        if (sym && typeof eventBus !== 'undefined') {
+          eventBus.emit(EventBus.Events.STOCK_SELECTED, sym);
+        }
+        searchResults.classList.remove('active');
+      });
+    });
   }
 
   showStockDetails(symbol) {
@@ -415,22 +580,31 @@ class DreamShareApp {
   }
 
   switchPanel(panel) {
-    document.querySelectorAll('.panel-tab').forEach(t => {
-      t.classList.toggle('active', t.dataset.panel === panel);
-    });
+    document.querySelectorAll('.panel-tab').forEach(t => t.classList.toggle('active', t.dataset.panel === panel));
     const content = document.getElementById('panelContent');
-    if (content) {
+    if (!content) return;
+    if (panel === 'watchlist') {
+      const watchlist = stateManager.get('watchlist') || [];
+      if (watchlist.length === 0) {
+        content.innerHTML = `<p style="color:var(--text-muted); padding: 1rem;">Watchlist is empty. Add stocks from the Watchlist view.</p>`;
+      } else {
+        const stocks = stateManager.get('stocks') || [];
+        content.innerHTML = watchlist.map(sym => {
+          const s = stocks.find(x => x.symbol === sym);
+          if (!s) return `<div class="panel-item"><strong>${sym}</strong> <span style="color:var(--text-muted)">no data</span></div>`;
+          const cls = s.change >= 0 ? 'positive' : 'negative';
+          return `<div class="panel-item"><strong>${s.symbol}</strong> <span>₹${s.ltp}</span> <span class="${cls}">${s.change >= 0 ? '+' : ''}${s.change}%</span></div>`;
+        }).join('');
+      }
+    } else {
       content.innerHTML = `<p style="color:var(--text-muted); padding: 1rem;">${this.titleCase(panel)} panel coming soon.</p>`;
     }
   }
 
-  openSettings() {
-    this.showToast('Settings panel coming soon.', 'info');
-  }
+  openSettings() { this.showToast('Settings panel coming soon.', 'info'); }
 
   updateMarketStatus() {
     if (typeof CONFIG === 'undefined' || !CONFIG.market) return;
-
     const now = new Date();
     const [openHour, openMin] = CONFIG.market.openTime.split(':').map(Number);
     const [closeHour, closeMin] = CONFIG.market.closeTime.split(':').map(Number);
@@ -438,12 +612,10 @@ class DreamShareApp {
     const marketClose = new Date(now); marketClose.setHours(closeHour, closeMin, 0);
     const isWeekday = now.getDay() !== 0 && now.getDay() !== 6;
     const isOpen = isWeekday && now >= marketOpen && now <= marketClose;
-
     stateManager.set('marketStatus', isOpen ? 'OPEN' : 'CLOSED');
 
     const statusElement = document.getElementById('marketStatus');
     if (!statusElement) return;
-
     const indicator = statusElement.querySelector('.status-indicator');
     const text = statusElement.querySelector('.status-text');
     if (indicator) indicator.className = `status-indicator ${isOpen ? 'open' : 'closed'}`;
@@ -453,7 +625,6 @@ class DreamShareApp {
   updateConnectionStatus(status) {
     const connectionStatus = document.getElementById('connectionStatus');
     if (!connectionStatus) return;
-
     const isConnected = status === 'connected';
     connectionStatus.innerHTML = `<i class="fas fa-circle ${isConnected ? 'connected' : 'disconnected'}"></i> ${isConnected ? 'Connected' : 'Disconnected'}`;
   }
@@ -461,48 +632,68 @@ class DreamShareApp {
   updateBadges() {
     const watchlist = stateManager.get('watchlist') || [];
     const alerts = stateManager.get('alerts') || [];
-
     const wlEl = document.getElementById('watchlistCount');
     const sbWl = document.getElementById('sidebarWatchlistCount');
     const alEl = document.getElementById('alertsCount');
     const sbAl = document.getElementById('sidebarAlertsCount');
-
     if (wlEl) wlEl.textContent = watchlist.length;
     if (sbWl) sbWl.textContent = watchlist.length;
     if (alEl) alEl.textContent = alerts.length;
     if (sbAl) sbAl.textContent = alerts.length;
   }
 
+  updateIndicesPanel() {
+    const list = document.getElementById('indicesList');
+    if (!list) return;
+    if (!this.indices || this.indices.length === 0) return;
+    list.innerHTML = this.indices.map(idx => {
+      const cls = idx.change >= 0 ? 'positive' : 'negative';
+      return `
+        <div class="index-item">
+          <span class="index-name">${idx.symbol}</span>
+          <span class="index-value ${cls}">${this.formatNumber(idx.ltp)}</span>
+          <span class="index-change ${cls}">${idx.change >= 0 ? '+' : ''}${idx.change}%</span>
+        </div>`;
+    }).join('');
+  }
+
   startPeriodicUpdates() {
     if (typeof CONFIG === 'undefined' || !CONFIG.market) return;
 
-    // Update market data on interval
     setInterval(async () => {
       try {
         if (typeof apiService === 'undefined') return;
-        const data = await apiService.getMarketWatch();
+        const [data, summary] = await Promise.all([
+          apiService.getMarketWatch().catch(() => null),
+          apiService.getMarketSummary().catch(() => null),
+        ]);
         if (data && data.data) {
           stateManager.set('stocks', data.data);
           if (typeof eventBus !== 'undefined' && typeof EventBus !== 'undefined') {
             eventBus.emit(EventBus.Events.MARKET_DATA_UPDATED, data.data);
           }
         }
+        if (summary && summary.indices) {
+          this.indices = summary.indices;
+          this.updateIndicesPanel();
+        }
       } catch (error) {
         console.debug('Periodic update skipped:', error.message);
       }
     }, CONFIG.market.refreshInterval || 30000);
 
-    // Update market status every 30 seconds
     setInterval(() => this.updateMarketStatus(), 30000);
   }
 
   async refreshData() {
     this.showToast('Refreshing...', 'info');
-    if (typeof apiService !== 'undefined' && apiService.clearCache) {
-      apiService.clearCache();
-    }
+    if (typeof apiService !== 'undefined' && apiService.clearCache) apiService.clearCache();
     await this.loadInitialData();
-    await this.loadView(stateManager.get('activeView') || 'dashboard');
+    const view = stateManager.get('activeView') || 'dashboard';
+    if (view === 'dashboard') this.renderDashboardSections();
+    else if (view === 'top-list') this.renderTopListContent();
+    else await this.loadView(view);
+    this.updateIndicesPanel();
     this.showToast('Data refreshed', 'success');
   }
 
@@ -511,37 +702,22 @@ class DreamShareApp {
     if (el) {
       el.style.display = show ? 'flex' : 'none';
       el.setAttribute('aria-hidden', show ? 'false' : 'true');
-      el.setAttribute('aria-busy', show ? 'true' : 'false');
     }
     const main = document.getElementById('mainPlatform');
-    if (main) {
-      main.setAttribute('aria-hidden', show ? 'true' : 'false');
-    }
-  }
-
-  showError(message) {
-    const loadingMessage = document.getElementById('loadingMessage');
-    if (loadingMessage) {
-      loadingMessage.textContent = message;
-      loadingMessage.style.color = 'var(--danger)';
-    }
+    if (main) main.setAttribute('aria-hidden', show ? 'true' : 'false');
   }
 
   showToast(message, type = 'info') {
     const container = document.getElementById('toastContainer');
     if (!container) return;
-
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
-
     const icon = type === 'success' ? 'check-circle'
       : type === 'error' ? 'exclamation-circle'
       : type === 'warning' ? 'exclamation-triangle'
       : 'info-circle';
-
     toast.innerHTML = `<i class="fas fa-${icon}"></i><span>${message}</span>`;
     container.appendChild(toast);
-
     setTimeout(() => {
       toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
       toast.style.opacity = '0';
@@ -551,13 +727,11 @@ class DreamShareApp {
   }
 
   handleKeyboardShortcuts(event) {
-    // Ctrl+K - Focus search
     if (event.ctrlKey && event.key === 'k') {
       event.preventDefault();
       const s = document.getElementById('globalSearch');
       if (s) s.focus();
     }
-    // Escape - Clear search
     if (event.key === 'Escape') {
       const s = document.getElementById('globalSearch');
       const r = document.getElementById('searchResults');
@@ -568,15 +742,28 @@ class DreamShareApp {
 
   debounce(func, wait) {
     let timeout;
-    return function executedFunction(...args) {
+    return function (...args) {
       const later = () => { clearTimeout(timeout); func(...args); };
       clearTimeout(timeout);
       timeout = setTimeout(later, wait);
     };
   }
+
+  // ===== Formatting helpers =====
+  formatNumber(n) {
+    if (n === null || n === undefined || isNaN(n)) return '—';
+    return Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  formatVolume(n) {
+    if (!n) return '—';
+    n = Number(n);
+    if (n >= 1e7) return (n / 1e7).toFixed(2) + ' Cr';
+    if (n >= 1e5) return (n / 1e5).toFixed(2) + ' L';
+    if (n >= 1e3) return (n / 1e3).toFixed(2) + ' K';
+    return n.toString();
+  }
 }
 
-// Initialize application when DOM is ready
 let app;
 document.addEventListener('DOMContentLoaded', () => {
   app = new DreamShareApp();
