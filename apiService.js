@@ -1,5 +1,4 @@
-// apiService.js - Connects to MarketPulse Pro Enterprise API (FastAPI)
-
+// apiService.js
 const API_BASE_URL = 'https://dreamstock-backend.onrender.com';
 
 class ApiService {
@@ -7,6 +6,7 @@ class ApiService {
     this.ws = null;
     this.wsCallbacks = [];
     this._cache = new Map();
+    this._symbolLibrary = null; // memoized
   }
 
   async request(endpoint, options = {}) {
@@ -19,30 +19,83 @@ class ApiService {
     return response.json();
   }
 
-  // Dashboard endpoints
-  async getMarketWatch() {
-    return this.getAllStocks(1, 500);
+  async getMarketWatch()      { return this.getAllStocks(1, 500); }
+  async getMarketSummary()    { return this.request('/market/summary'); }
+  async getTop(category, limit = 5) { return this.request(`/stocks/top/${category}?limit=${limit}`); }
+  async getAllStocks(page = 1, limit = 50) { return this.request(`/stocks/all?page=${page}&limit=${limit}`); }
+  async getStockDetail(symbol) { return this.request(`/stocks/${encodeURIComponent(symbol)}/detail`); }
+
+  /**
+   * Returns the master symbol library used by autocomplete.
+   * Cached after first fetch since it rarely changes.
+   */
+  async getSymbolList() {
+    if (this._symbolLibrary) return this._symbolLibrary;
+    try {
+      const res = await this.request('/stocks/symbols');
+      this._symbolLibrary = (res && res.symbols) || [];
+    } catch (e) {
+      this._symbolLibrary = this._fallbackSymbols();
+    }
+    return this._symbolLibrary;
   }
 
-  async getMarketSummary() {
-    return this.request('/market/summary');
+  _fallbackSymbols() {
+    // Offline-safe minimal list
+    return [
+      { symbol: 'RELIANCE',   name: 'Reliance Industries' },
+      { symbol: 'TCS',        name: 'Tata Consultancy Services' },
+      { symbol: 'HDFCBANK',   name: 'HDFC Bank' },
+      { symbol: 'INFY',       name: 'Infosys' },
+      { symbol: 'ICICIBANK',  name: 'ICICI Bank' },
+      { symbol: 'NIFTY 50',   name: 'NIFTY 50 Index', isIndex: true },
+      { symbol: 'SENSEX',     name: 'BSE SENSEX', isIndex: true },
+      { symbol: 'BANK NIFTY', name: 'Bank Nifty', isIndex: true },
+    ];
   }
 
-  async getTop(category, limit = 5) {
-    return this.request(`/stocks/top/${category}?limit=${limit}`);
+  clearCache() { this._cache.clear(); this._symbolLibrary = null; }
+
+  /**
+   * Simulated market depth — 5 bid/ask levels around the LTP.
+   * Real depth requires a paid broker feed (Zerodha Kite, Upstox, etc.).
+   */
+  async getMarketDepth(symbol) {
+    const detail = await this.getStockDetail(symbol);
+    const ltp = (detail && detail.snapshot && detail.snapshot.ltp) || 0;
+    if (!ltp) return null;
+
+    // Generate 5 plausible bid/ask levels with random small spreads
+    const tick = ltp >= 1000 ? 0.5 : ltp >= 100 ? 0.05 : 0.01;
+    const bids = [];
+    const asks = [];
+    for (let i = 1; i <= 5; i++) {
+      const bidPrice = +(ltp - i * tick * (1 + Math.random())).toFixed(2);
+      const askPrice = +(ltp + i * tick * (1 + Math.random())).toFixed(2);
+      bids.push({
+        price: bidPrice,
+        qty: Math.floor(50 + Math.random() * 500) * 10,
+        orders: Math.floor(1 + Math.random() * 8),
+      });
+      asks.push({
+        price: askPrice,
+        qty: Math.floor(50 + Math.random() * 500) * 10,
+        orders: Math.floor(1 + Math.random() * 8),
+      });
+    }
+    return {
+      symbol,
+      ltp,
+      bids,
+      asks,
+      bidTotal:  bids.reduce((sum, b) => sum + b.qty, 0),
+      askTotal:  asks.reduce((sum, a) => sum + a.qty, 0),
+      simulated: true,
+      timestamp: new Date().toISOString(),
+    };
   }
 
-  clearCache() {
-    this._cache.clear();
-  }
-
-  async getAllStocks(page = 1, limit = 50) {
-    return this.request(`/stocks/all?page=${page}&limit=${limit}`);
-  }
-
-  // Map our UI timeframe key → valid yfinance (period, interval).
-  // Important: yfinance accepts only specific strings; using anything else
-  // returns an empty dataframe and the chart goes blank.
+  // Map UI timeframe key -> yfinance (period, interval)
   static TIMEFRAME_MAP = {
     '1d':  { period: '1d',  interval: '5m'  },
     '5d':  { period: '5d',  interval: '15m' },
@@ -54,22 +107,12 @@ class ApiService {
     'max': { period: 'max', interval: '1mo' },
   };
 
-  /**
-   * Get historical OHLC data.
-   * @param {string} symbol
-   * @param {object} params - { range } where range is a key from TIMEFRAME_MAP
-   */
   async getHistoricalData(symbol, params = {}) {
-    let yfSymbol = symbol;
-    if (symbol === 'NIFTY 50' || symbol === 'NIFTY50') yfSymbol = '^NSEI';
-    if (symbol === 'SENSEX') yfSymbol = '^BSESN';
-    if (symbol === 'BANK NIFTY' || symbol === 'BANKNIFTY') yfSymbol = '^NSEBANK';
-
     const range = (params.range && ApiService.TIMEFRAME_MAP[params.range])
       ? ApiService.TIMEFRAME_MAP[params.range]
       : ApiService.TIMEFRAME_MAP['1y'];
 
-    const url = `/stocks/${encodeURIComponent(yfSymbol)}/history?period=${range.period}&interval=${range.interval}`;
+    const url = `/stocks/${encodeURIComponent(symbol)}/history?period=${range.period}&interval=${range.interval}`;
     const data = await this.request(url);
 
     if (Array.isArray(data)) {
@@ -86,11 +129,7 @@ class ApiService {
   }
 
   async getFundamentals(symbol) {
-    let yfSymbol = symbol;
-    if (symbol === 'NIFTY 50' || symbol === 'NIFTY50') yfSymbol = '^NSEI';
-    if (symbol === 'SENSEX') yfSymbol = '^BSESN';
-    if (symbol === 'BANK NIFTY' || symbol === 'BANKNIFTY') yfSymbol = '^NSEBANK';
-    return this.request(`/stocks/${encodeURIComponent(yfSymbol)}/fundamentals`);
+    return this.request(`/stocks/${encodeURIComponent(symbol)}/fundamentals`);
   }
 
   _wsUrl() {
@@ -108,20 +147,17 @@ class ApiService {
     this.ws = new WebSocket(this._wsUrl());
     this.ws.onopen = () => console.log('WebSocket connected');
     this.ws.onmessage = (event) => {
-      let data;
-      try { data = JSON.parse(event.data); } catch (e) { return; }
+      let data; try { data = JSON.parse(event.data); } catch (e) { return; }
       if (data.type === 'MARKET_UPDATE' && data.data) {
         const quotes = {};
-        Object.keys(data.data).forEach(ticker => {
-          const stock = data.data[ticker];
-          quotes[stock.symbol] = stock;
+        Object.keys(data.data).forEach(t => {
+          const s = data.data[t]; quotes[s.symbol] = s;
         });
         if (onMessageCallback) onMessageCallback(quotes);
       }
     };
     this.ws.onerror = (err) => console.error('WebSocket error', err);
     this.ws.onclose = () => {
-      console.log('WebSocket closed, reconnecting in 5s...');
       setTimeout(() => this.connectWebSocket(onMessageCallback), 5000);
     };
   }
@@ -129,9 +165,7 @@ class ApiService {
   subscribeToQuotes(callback) {
     this.wsCallbacks.push(callback);
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      this.connectWebSocket((quotes) => {
-        this.wsCallbacks.forEach(cb => cb(quotes));
-      });
+      this.connectWebSocket((quotes) => this.wsCallbacks.forEach(cb => cb(quotes)));
     }
   }
 }
