@@ -82,6 +82,83 @@ class DreamShareApp {
 
     document.addEventListener('keydown', this.handleKeyboardShortcuts.bind(this));
   }
+ registerComponents() {
+        console.log('📋 Registering components...');
+        
+        // Check which component classes are available
+        const availableComponents = {
+            'AdvancedChartsComponent': typeof AdvancedChartsComponent !== 'undefined',
+            'AdvancedWatchlistComponent': typeof AdvancedWatchlistComponent !== 'undefined',
+            'AdvancedPortfolioComponent': typeof AdvancedPortfolioComponent !== 'undefined',
+            'AdvancedScreenerComponent': typeof AdvancedScreenerComponent !== 'undefined',
+            'TechnicalChartComponent': typeof TechnicalChartComponent !== 'undefined',  // NEW
+            'DreamShareComponent': typeof DreamShareComponent !== 'undefined',
+            'NewsComponent': typeof NewsComponent !== 'undefined',
+        };
+        
+        console.log('Available components:', availableComponents);
+        
+        // ... existing component registration ...
+        
+        // Technical Chart Component (NEW)
+        if (availableComponents.TechnicalChartComponent) {
+            this.components.technicalChart = new TechnicalChartComponent(
+                'charts-container',  // Use the main chart container
+                this.stateManager,
+                this.apiService
+            );
+        } else {
+            // Fallback to AdvancedChartsComponent
+            if (availableComponents.AdvancedChartsComponent) {
+                this.components.charts = new AdvancedChartsComponent(
+                    'charts-container',
+                    this.stateManager,
+                    this.apiService,
+                    this.eventBus
+                );
+            }
+        }
+        
+        // ... rest of components ...
+    }
+
+    // Navigation handler for chart view
+    navigateTo(view) {
+        switch(view) {
+            case 'charts':
+                this.showTechnicalChart();
+                break;
+            case 'watchlist':
+                this.showWatchlist();
+                break;
+            case 'portfolio':
+                this.showPortfolio();
+                break;
+            // ... other views
+        }
+    }
+
+    showTechnicalChart() {
+        // Hide other containers
+        document.querySelectorAll('.dashboard-grid > .card').forEach(card => {
+            card.style.display = 'none';
+        });
+        
+        // Show chart container full screen
+        const chartContainer = document.getElementById('charts-container');
+        if (chartContainer) {
+            chartContainer.style.display = 'block';
+            chartContainer.style.gridColumn = '1 / -1';
+            chartContainer.style.minHeight = '80vh';
+        }
+        
+        // Render technical chart if not already rendered
+        if (this.components.technicalChart && !this.components.technicalChart.isRendered) {
+            this.components.technicalChart.render();
+            this.components.technicalChart.isRendered = true;
+        }
+    }
+}
 
   attachGlobalSearchAutocomplete() {
     const input = document.getElementById('globalSearch');
@@ -925,83 +1002,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 // Add to your app.js - Updated component registration
 
-class DreamShareApp {
-    // ... existing code ...
 
-    registerComponents() {
-        console.log('📋 Registering components...');
-        
-        // Check which component classes are available
-        const availableComponents = {
-            'AdvancedChartsComponent': typeof AdvancedChartsComponent !== 'undefined',
-            'AdvancedWatchlistComponent': typeof AdvancedWatchlistComponent !== 'undefined',
-            'AdvancedPortfolioComponent': typeof AdvancedPortfolioComponent !== 'undefined',
-            'AdvancedScreenerComponent': typeof AdvancedScreenerComponent !== 'undefined',
-            'TechnicalChartComponent': typeof TechnicalChartComponent !== 'undefined',  // NEW
-            'DreamShareComponent': typeof DreamShareComponent !== 'undefined',
-            'NewsComponent': typeof NewsComponent !== 'undefined',
-        };
-        
-        console.log('Available components:', availableComponents);
-        
-        // ... existing component registration ...
-        
-        // Technical Chart Component (NEW)
-        if (availableComponents.TechnicalChartComponent) {
-            this.components.technicalChart = new TechnicalChartComponent(
-                'charts-container',  // Use the main chart container
-                this.stateManager,
-                this.apiService
-            );
-        } else {
-            // Fallback to AdvancedChartsComponent
-            if (availableComponents.AdvancedChartsComponent) {
-                this.components.charts = new AdvancedChartsComponent(
-                    'charts-container',
-                    this.stateManager,
-                    this.apiService,
-                    this.eventBus
-                );
-            }
-        }
-        
-        // ... rest of components ...
-    }
 
-    // Navigation handler for chart view
-    navigateTo(view) {
-        switch(view) {
-            case 'charts':
-                this.showTechnicalChart();
-                break;
-            case 'watchlist':
-                this.showWatchlist();
-                break;
-            case 'portfolio':
-                this.showPortfolio();
-                break;
-            // ... other views
-        }
-    }
-
-    showTechnicalChart() {
-        // Hide other containers
-        document.querySelectorAll('.dashboard-grid > .card').forEach(card => {
-            card.style.display = 'none';
-        });
-        
-        // Show chart container full screen
-        const chartContainer = document.getElementById('charts-container');
-        if (chartContainer) {
-            chartContainer.style.display = 'block';
-            chartContainer.style.gridColumn = '1 / -1';
-            chartContainer.style.minHeight = '80vh';
-        }
-        
-        // Render technical chart if not already rendered
-        if (this.components.technicalChart && !this.components.technicalChart.isRendered) {
-            this.components.technicalChart.render();
-            this.components.technicalChart.isRendered = true;
-        }
-    }
-}
+   
